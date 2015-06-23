@@ -1,0 +1,1 @@
+# sensu-influxdb-extension
