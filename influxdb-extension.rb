@@ -6,7 +6,7 @@ require 'timeout'
 module Sensu::Extension
   class Influx < Handler
     
-    @@extension_name = 'influxdb_extension'
+    @@extension_name = 'influxdb-extension'
 
     def name
       @@extension_name
@@ -29,7 +29,6 @@ module Sensu::Extension
       @timeout  = influxdb_config[:timeout] || 15
 
       @uri = URI("http://#{hostname}:#{port}/write?db=#{database}")
-      #TODO handle authentication and scope for username + pass
       @http = Net::HTTP::new(@uri.host, @uri.port)         
 
       @logger.debug("initialized influxdb config: hostname: #{hostname}, port: #{port}, database: #{database}, username: #{@username}, timeout: #{@timeout}")
@@ -97,7 +96,7 @@ module Sensu::Extension
         @logger.error("#{@@extension_name}: unable to post payload to influxb - #{e.backtrace.to_s}")
       end
 
-      yield("influxdb_extension: Handler finished", 0)
+      yield("#{@@extension_name}: Handler finished", 0)
     end
 
   end

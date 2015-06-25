@@ -26,6 +26,7 @@ defined on the sensu-client configuration into **tags**. The checks name will be
 ```
 
 3. Add the extension to your sensu-handler configuration 
+
 ```
 "handlers": {
     "metrics": {
@@ -38,6 +39,7 @@ defined on the sensu-client configuration into **tags**. The checks name will be
 ```
 
 4. Configure your metric/check-definitions to use this handler
+
 ```
 "checks": {
     "metric_cpu": {
