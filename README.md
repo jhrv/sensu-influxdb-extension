@@ -55,6 +55,12 @@ installed.
 
 5 - Restart your sensu-server and sensu-client(s)
 
+If you follow the sensu-server log (/var/log/sensu/sensu-server.log) you should see the following output if all is working correctly:
+
+```
+{"timestamp":"2015-06-21T13:37:04.256753+0200","level":"info","message":"influxdb-extension:
+Successfully initialized config: hostname: ....
+```
 
 # Explanation on how the extension handles sensu-events and how this translates into InfluxDB concepts
 
@@ -63,7 +69,7 @@ installed.
 ```
 {
     "client": {
-        "name": "slam_dev_e34jbsl01543",
+        "name": "app_env_hostname",
         "address": "my-app-in-env.domain.tld",
         "subscriptions": [],
         "tags": {                                      =>   'environment=dev,application=myapp,hostname=my-app-in-env.domain.tld'
