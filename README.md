@@ -7,6 +7,8 @@ For each sensu-event it receives, it will split the sensu-output into **fields**
 defined on the sensu-client configuration into **tags**. The checks name will be used as the
 **measurement** name.
 
+This extension uses the InfluxDB REST-API directly and does not require any extra gems to be
+installed.
 
 # Getting started
 
