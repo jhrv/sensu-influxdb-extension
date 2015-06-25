@@ -31,10 +31,13 @@ module Sensu::Extension
       @uri = URI("http://#{hostname}:#{port}/write?db=#{database}")
       @http = Net::HTTP::new(@uri.host, @uri.port)         
 
-      @logger.debug("initialized influxdb config: hostname: #{hostname}, port: #{port}, database: #{database}, username: #{@username}, timeout: #{@timeout}")
+      @logger.info("#{@@extension_name}: Successfully initialized config: hostname: #{hostname}, port: #{port}, database: #{database}, username: #{@username}, timeout: #{@timeout}")
     end
     
     def validate_config(config)
+      if config.nil?
+        raise ArgumentError, "No configuration for #{@@extension_name} provided. Exiting..."
+      end
       ["hostname", "database"].each do |required_setting| 
         if config[required_setting].nil? 
           raise ArgumentError, "Required setting #{required_setting} not provided to extension. This should be provided as JSON element with key '#{@@extension_name}'. Exiting..."
