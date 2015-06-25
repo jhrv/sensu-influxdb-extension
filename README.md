@@ -50,7 +50,7 @@ defined on the sensu-client configuration into **tags**. The checks name will be
  }
 ```
 
-5 - Restart your sensu-server and sensu-client(s) and you are good to go.
+5 - Restart your sensu-server and sensu-client(s)
 
 
 # Explanation on how the extension handles sensu-events and how this translates into InfluxDB concepts
