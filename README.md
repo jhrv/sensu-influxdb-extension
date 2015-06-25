@@ -13,6 +13,7 @@ installed.
 # Getting started
 
 1 - Add the *sensu-influxdb-extension.rb* to the sensu extensions folder (/etc/sensu/extensions)
+
 2 - Create your InfluxDB configuration for Sensu (or copy and edit *influxdb-extension.json.tmpl*) inside the sensu config folder (/etc/sensu/conf.d). 
 
 ```
