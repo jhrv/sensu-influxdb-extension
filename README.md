@@ -10,8 +10,8 @@ defined on the sensu-client configuration into **tags**. The checks name will be
 
 # Getting started
 
-1. Add the *sensu-influxdb-extension.rb* to the sensu extensions folder (/etc/sensu/extensions)
-2. Create your InfluxDB configuration for Sensu (or copy and edit *influxdb-extension.json.tmpl*) inside the sensu config folder (/etc/sensu/conf.d). 
+1 - Add the *sensu-influxdb-extension.rb* to the sensu extensions folder (/etc/sensu/extensions)
+2 - Create your InfluxDB configuration for Sensu (or copy and edit *influxdb-extension.json.tmpl*) inside the sensu config folder (/etc/sensu/conf.d). 
 
 ```
 {
@@ -25,7 +25,7 @@ defined on the sensu-client configuration into **tags**. The checks name will be
 }
 ```
 
-3. Add the extension to your sensu-handler configuration 
+3 - Add the extension to your sensu-handler configuration 
 
 ```
 "handlers": {
@@ -38,7 +38,7 @@ defined on the sensu-client configuration into **tags**. The checks name will be
 
 ```
 
-4. Configure your metric/check-definitions to use this handler
+4 - Configure your metric/check-definitions to use this handler
 
 ```
 "checks": {
@@ -50,20 +50,20 @@ defined on the sensu-client configuration into **tags**. The checks name will be
  }
 ```
 
-5. Restart your sensu-server and sensu-client(s) and you are good to go.
+5 - Restart your sensu-server and sensu-client(s) and you are good to go.
 
 
 # Explanation on how the extension handles sensu-events and how this translates into InfluxDB concepts
 
 ###sensu-client tags => tags
 
-```javascript
+```
 {
     "client": {
         "name": "slam_dev_e34jbsl01543",
         "address": "my-app-in-env.domain.tld",
         "subscriptions": [],
-        "tags": {
+        "tags": {                                      =>   'environment=dev,application=myapp,hostname=my-app-in-env.domain.tld'
             "environment": "dev",
             "application": "myapp",
             "hostname": "my-app-in-env.domain.tld"
@@ -71,13 +71,12 @@ defined on the sensu-client configuration into **tags**. The checks name will be
     }
 }
 ```
-=>   'environment=dev,application=myapp,hostname=my-app-in-env.domain.tld'
 
 If no tags are defined on the client, it will by default create the tag hostname using the clients address.
 
 ###sensu-output (graphite data-format) => fields
 
-Graphite data-format = '<metric_path> <value> <timestamp>\n'
+Graphite data-format = '[metric_path] [value] [timestamp]\n'
 
 ```
 key_a 1337 1435216969
@@ -92,7 +91,8 @@ key_c 1234 1435216969
         "cpu-metrics": {
             "type": "metric",   =>   'cpu-metrics'
              ...
-
+        ...
+    }
 ```
 
 
