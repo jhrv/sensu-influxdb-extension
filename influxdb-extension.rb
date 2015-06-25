@@ -81,14 +81,31 @@ module Sensu::Extension
       end
     end
 
+    def create_point(measurement, field_value, tags)
+      "#{measurement},#{tags} value=#{field_value}"
+    end
+
     def run(event)
       begin
         event = MultiJson.load(event)
 
-        measurement = event[:check][:name]
+        #measurement = event[:check][:name]
         tags = create_tags(event)       
-        fields = create_fields(event[:check][:output])
-        payload = "#{measurement},#{tags} #{fields}"
+        
+        output = event[:check][:output]
+        points = []
+        lines = output.split(/\n/)         
+        lines.each do |line|
+            key, value = line.split(/\s+/)
+            point = create_point(key, value, tags)
+            @logger.debug("created point: #{point}")
+            points << point
+        end
+        
+        payload = points.join("\n")
+
+        #fields = create_fields(event[:check][:output])
+        #payload = "#{measurement},#{tags} #{fields}"
 
         request = Net::HTTP::Post.new(@uri.request_uri)
         request.body = payload
