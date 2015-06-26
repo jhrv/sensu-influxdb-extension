@@ -45,23 +45,6 @@ module Sensu::Extension
       end
     end
 
-    def extract_key_value(data)
-      key,value = data.split(/\s+/)
-      value = value.match('\.').nil? ? Integer(value) : Float(value) rescue value.to_s
-      "#{key}=#{value}"
-    end
-    
-    def create_fields(output)
-      begin
-        lines = output.split(/\n/)
-        fields = lines.map(&method(:extract_key_value)).join(",")
-        @logger.debug("found following fields: #{fields}")
-        fields
-      rescue => e
-        @logger.error("#{@@extension_name}: unable to convert output to influxdb fields #{e.backtrace.to_s}")
-      end
-    end
-
     def create_tags(event)
       begin
         incoming_tags = event[:client][:tags]
@@ -73,39 +56,30 @@ module Sensu::Extension
 
         tag_strings = []
         incoming_tags.each { |key,value| tag_strings << "#{key}=#{value}" }
-        tags = tag_strings.join(",")
-        @logger.debug("found following tags: #{tags}")
-        tags
+        tag_strings.join(",")
       rescue => e
         @logger.error("#{@@extension_name}: unable to create to tags from event data #{e.backtrace.to_s}")
       end
     end
 
-    def create_point(measurement, field_value, tags)
-      "#{measurement},#{tags} value=#{field_value}"
+    def create_payload(output, tags)
+        points = []
+
+        output.split(/\n/).each do |line|
+            measurement, field_value = line.split(/\s+/)
+            point = "#{measurement},#{tags} value=#{field_value}"
+            points << point
+        end
+        
+        points.join("\n")
     end
 
     def run(event)
       begin
         event = MultiJson.load(event)
-
-        #measurement = event[:check][:name]
         tags = create_tags(event)       
-        
-        output = event[:check][:output]
-        points = []
-        lines = output.split(/\n/)         
-        lines.each do |line|
-            key, value = line.split(/\s+/)
-            point = create_point(key, value, tags)
-            @logger.debug("created point: #{point}")
-            points << point
-        end
-        
-        payload = points.join("\n")
-
-        #fields = create_fields(event[:check][:output])
-        #payload = "#{measurement},#{tags} #{fields}"
+        @logger.debug("created tags: #{tags}")
+        payload = create_payload(event[:check][:output], tags)
 
         request = Net::HTTP::Post.new(@uri.request_uri)
         request.body = payload

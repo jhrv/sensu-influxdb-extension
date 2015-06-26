@@ -3,10 +3,8 @@ sensu-influxdb-extension
 
 Sensu extension for sending metrics with graphite data-format to InfluxDB (>=0.9).
 
-For each sensu-event it receives, it will split the sensu-output into **fields** and extract tags
-defined on the sensu-client configuration into **tags**. The checks name will be used as the
-**measurement** name.
-
+For each sensu-event it receives, it will split the sensu-output into **measurements** and extract tags
+defined on the sensu-client configuration into **tags**.
 This extension uses the InfluxDB REST-API directly and does not require any extra gems to be
 installed.
 
@@ -83,25 +81,21 @@ Successfully initialized config: hostname: ....
 
 If no tags are defined on the client, it will by default create the tag hostname using the clients address.
 
-###sensu-output (graphite data-format) => fields
+###sensu-output (graphite data-format) => measurements
 
 Graphite data-format = '[metric_path] [value] [timestamp]\n'
 
+
+Example output:
+
 ```
 key_a 1337 1435216969
-key_b 6969 1435216969    =>    'key_a=1337,key_b=6969,key_c=1234'
+key_b 6969 1435216969        
 key_c 1234 1435216969
 ```
 
-###sensu-check name => measurement
+... will turn into the following payload written to the InfluxDB write endpoint
 
 ```
-    "checks": {
-        "cpu-metrics": {
-            "type": "metric",   =>   'cpu-metrics'
-             ...
-        ...
-    }
+key_a,<tags> value=1337\nkey_b,<tags> value=6969\nkey_c,<tags> value=1234
 ```
-
-
