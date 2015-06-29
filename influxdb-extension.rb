@@ -13,7 +13,7 @@ module Sensu::Extension
     end
 
     def description
-      'outputs metrics to InfluxDB'
+      'Outputs metrics to InfluxDB'
     end
 
     def post_init
