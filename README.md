@@ -62,7 +62,7 @@ Successfully initialized config: hostname: ....
 
 # Explanation on how the extension handles sensu-events and how this translates into InfluxDB concepts
 
-###sensu-client tags => tags
+###sensu-client tags => influxdb tags
 
 ```
 {
@@ -70,7 +70,7 @@ Successfully initialized config: hostname: ....
         "name": "app_env_hostname",
         "address": "my-app-in-env.domain.tld",
         "subscriptions": [],
-        "tags": {                                      =>   'environment=dev,application=myapp,hostname=my-app-in-env.domain.tld'
+        "tags": {
             "environment": "dev",
             "application": "myapp",
             "hostname": "my-app-in-env.domain.tld"
@@ -79,18 +79,19 @@ Successfully initialized config: hostname: ....
 }
 ```
 
+... will turn into the following tags for the series: 'environment=dev,application=myapp,hostname=my-app-in-env.domain.tld'
+
 If no tags are defined on the client, it will by default create the tag hostname using the clients address.
 
 ###sensu-output (graphite data-format) => measurements
 
 Graphite data-format = '[metric_path] [value] [timestamp]\n'
 
-
 Example output:
 
 ```
 key_a 1337 1435216969
-key_b 6969 1435216969        
+key_b 6969 1435216969
 key_c 1234 1435216969
 ```
 
