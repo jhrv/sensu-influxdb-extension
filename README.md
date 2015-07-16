@@ -3,10 +3,10 @@ sensu-influxdb-extension
 
 Sensu extension for sending metrics with graphite data-format to InfluxDB (>=0.9).
 
-For each sensu-event it receives, it will split the sensu-output into **measurements** and extract tags
+For each sensu-event it receives, it will split the sensu-output into **measurements** and **points**  and extract tags
 defined on the sensu-client configuration into **tags**.
-This extension uses the InfluxDB REST-API directly and does not require any extra gems to be
-installed.
+
+This extension uses the InfluxDB REST-API directly.
 
 # Getting started
 
@@ -100,3 +100,5 @@ key_c 1234 1435216969
 ```
 key_a,<tags> value=1337\nkey_b,<tags> value=6969\nkey_c,<tags> value=1234
 ```
+
+InfluxDB will automatically create a timestamp for the points if this is not provided.
