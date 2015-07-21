@@ -84,8 +84,13 @@ module Sensu::Extension
         request = Net::HTTP::Post.new(@uri.request_uri)
         request.body = payload
         request.basic_auth(@username, @password)
+        
         @logger.debug("writing payload #{payload} to endpoint #{@uri.to_s}")
-        response = @http.request(request)
+        
+        Thread.new do 
+          @http.request(request)
+        end
+
       rescue => e
         @logger.error("#{@@extension_name}: unable to post payload to influxb - #{e.backtrace.to_s}")
       end
