@@ -92,7 +92,7 @@ module Sensu::Extension
         end
 
       rescue => e
-        @logger.error("#{@@extension_name}: unable to post payload to influxb - #{e.backtrace.to_s}")
+        @logger.error("#{@@extension_name}: unable to post payload to influxdb - #{e.backtrace.to_s}")
       end
 
       yield("#{@@extension_name}: Handler finished", 0)
