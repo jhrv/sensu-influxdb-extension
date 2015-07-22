@@ -10,9 +10,9 @@ This extension uses the InfluxDB REST-API directly.
 
 # Getting started
 
-1 - Add the *sensu-influxdb-extension.rb* to the sensu extensions folder (/etc/sensu/extensions)
+1) Add the *sensu-influxdb-extension.rb* to the sensu extensions folder (/etc/sensu/extensions)
 
-2 - Create your InfluxDB configuration for Sensu (or copy and edit *influxdb-extension.json.tmpl*) inside the sensu config folder (/etc/sensu/conf.d). 
+2) Create your InfluxDB configuration for Sensu (or copy and edit *influxdb-extension.json.tmpl*) inside the sensu config folder (/etc/sensu/conf.d). 
 
 ```
 {
@@ -26,7 +26,7 @@ This extension uses the InfluxDB REST-API directly.
 }
 ```
 
-3 - Add the extension to your sensu-handler configuration 
+3) Add the extension to your sensu-handler configuration 
 
 ```
 "handlers": {
@@ -39,7 +39,7 @@ This extension uses the InfluxDB REST-API directly.
 
 ```
 
-4 - Configure your metric/check-definitions to use this handler
+4) Configure your metric/check-definitions to use this handler
 
 ```
 "checks": {
@@ -51,7 +51,8 @@ This extension uses the InfluxDB REST-API directly.
  }
 ```
 
-5 - Restart your sensu-server and sensu-client(s)
+5)  Restart your sensu-server and sensu-client(s)
+
 
 If you follow the sensu-server log (/var/log/sensu/sensu-server.log) you should see the following output if all is working correctly:
 
@@ -98,7 +99,6 @@ key_c 1234 1435216969
 ... will turn into the following payload written to the InfluxDB write endpoint
 
 ```
-key_a,<tags> value=1337\nkey_b,<tags> value=6969\nkey_c,<tags> value=1234
+key_a,<tags> value=1337 1435216969\nkey_b,<tags> value=6969 1435216969\nkey_c,<tags> value=1234 1435216969
 ```
 
-InfluxDB will automatically create a timestamp for the points if this is not provided.

@@ -67,7 +67,8 @@ module Sensu::Extension
 
         output.split(/\n/).each do |line|
             measurement, field_value, timestamp = line.split(/\s+/)
-            point = "#{measurement},#{tags} value=#{field_value} #{timestamp}"
+            timestamp_nano = Integer(timestamp) * (10 ** 9)
+            point = "#{measurement},#{tags} value=#{field_value} #{timestamp_nano}" 
             points << point
         end
         
