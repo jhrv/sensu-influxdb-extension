@@ -47,7 +47,7 @@ module Sensu::Extension
 
     def create_tags(event)
       begin
-        incoming_tags = event[:client][:tags]
+        incoming_tags = Hash[event[:client][:tags].sort] # sorting tags alphabetically in order to increase InfluxDB performance
 
         # if no tags are provided with the client, we add hostname as a tag.
         if incoming_tags.nil?
@@ -66,8 +66,8 @@ module Sensu::Extension
         points = []
 
         output.split(/\n/).each do |line|
-            measurement, field_value = line.split(/\s+/)
-            point = "#{measurement},#{tags} value=#{field_value}"
+            measurement, field_value, timestamp = line.split(/\s+/)
+            point = "#{measurement},#{tags} value=#{field_value} #{timestamp}"
             points << point
         end
         
@@ -89,6 +89,7 @@ module Sensu::Extension
         
         Thread.new do 
           @http.request(request)
+          request.finish
         end
 
       rescue => e
