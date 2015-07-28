@@ -47,10 +47,12 @@ module Sensu::Extension
 
     def create_tags(event)
       begin
-        incoming_tags = Hash[event[:client][:tags].sort] # sorting tags alphabetically in order to increase InfluxDB performance
 
-        # if no tags are provided with the client, we add hostname as a tag.
-        if incoming_tags.nil?
+        if event[:client].has_key?(:tags)
+          # sorting tags alphabetically in order to increase InfluxDB performance
+          incoming_tags = Hash[event[:client][:tags].sort]
+        else
+          # if no tags are provided with the client, we add hostname as a tag.
           incoming_tags = {"hostname" => event[:client][:address]}
         end
 
@@ -86,7 +88,7 @@ module Sensu::Extension
         request.body = payload
         request.basic_auth(@username, @password)
         
-        @logger.debug("writing payload #{payload} to endpoint #{@uri.to_s}")
+        @logger.debug("#{@@extension_name}: writing payload #{payload} to endpoint #{@uri.to_s}")
         
         Thread.new do 
           @http.request(request)
