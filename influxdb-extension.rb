@@ -21,9 +21,9 @@ module Sensu::Extension
       
       validate_config(influxdb_config)
        
-      hostname = influxdb_config[:hostname] 
-      port     = influxdb_config[:port] || 8086
-      database = influxdb_config[:database]
+      hostname  = influxdb_config[:hostname] 
+      port      = influxdb_config[:port] || 8086
+      database  = influxdb_config[:database]
       @username = influxdb_config[:username]
       @password = influxdb_config[:password]
       @timeout  = influxdb_config[:timeout] || 15
@@ -38,6 +38,7 @@ module Sensu::Extension
       if config.nil?
         raise ArgumentError, "No configuration for #{@@extension_name} provided. Exiting..."
       end
+
       ["hostname", "database"].each do |required_setting| 
         if config[required_setting].nil? 
           raise ArgumentError, "Required setting #{required_setting} not provided to extension. This should be provided as JSON element with key '#{@@extension_name}'. Exiting..."
@@ -70,6 +71,7 @@ module Sensu::Extension
         output.split(/\n/).each do |line|
             measurement, field_value, timestamp = line.split(/\s+/)
             timestamp_nano = Integer(timestamp) * (10 ** 9)
+            field_value = field_value.to_f unless field_value.is_a? String
             point = "#{measurement},#{tags} value=#{field_value} #{timestamp_nano}" 
             points << point
         end

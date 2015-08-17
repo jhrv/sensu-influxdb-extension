@@ -61,7 +61,7 @@ If you follow the sensu-server log (/var/log/sensu/sensu-server.log) you should 
 Successfully initialized config: hostname: ....
 ```
 
-# Explanation on how the extension handles sensu-events and how this translates into InfluxDB concepts
+# sensu-events => InfluxDB concepts
 
 ###sensu-client tags => influxdb tags
 
@@ -99,6 +99,7 @@ key_c 1234 1435216969
 ... will turn into the following payload written to the InfluxDB write endpoint
 
 ```
-key_a,<tags> value=1337 1435216969\nkey_b,<tags> value=6969 1435216969\nkey_c,<tags> value=1234 1435216969
+key_a,<tags> value=1337.0 1435216969000000000\nkey_b,<tags> value=6969.0 1435216969000000000\nkey_c,<tags> value=1234.0 1435216969000000000
 ```
 
+Note that the timestamp has been converted to nanoseconds as this is assumed by InfluxDB unless otherwise specified. In addition all non-string values are converted to float.
