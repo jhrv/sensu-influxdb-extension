@@ -68,7 +68,7 @@ module Sensu::Extension
     def create_payload(output, tags)
         points = []
 
-        output.split(/\n/).each do |line|
+        output.split(/\r\n|\n/).each do |line|
             measurement, field_value, timestamp = line.split(/\s+/)
             timestamp_nano = Integer(timestamp) * (10 ** 9)
             field_value = field_value.to_f unless field_value.is_a? String
@@ -89,9 +89,9 @@ module Sensu::Extension
         request = Net::HTTP::Post.new(@uri.request_uri)
         request.body = payload
         request.basic_auth(@username, @password)
-        
+
         @logger.debug("#{@@extension_name}: writing payload #{payload} to endpoint #{@uri.to_s}")
-        
+
         Thread.new do 
           @http.request(request)
           request.finish
