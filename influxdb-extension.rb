@@ -66,7 +66,7 @@ module Sensu::Extension
     end
 
     def is_number?(input)
-      true if Float(string) rescue false
+      true if Float(input) rescue false
     end
 
     def create_payload(output, tags)
