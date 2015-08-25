@@ -65,13 +65,17 @@ module Sensu::Extension
       end
     end
 
+    def is_number?(input)
+      true if Float(string) rescue false
+    end
+
     def create_payload(output, tags)
         points = []
 
         output.split(/\r\n|\n/).each do |line|
             measurement, field_value, timestamp = line.split(/\s+/)
             timestamp_nano = Integer(timestamp) * (10 ** 9)
-            field_value = field_value.to_f unless field_value.is_a? String
+            field_value = is_number?(field_value) ? field_value.to_f : field_value
             point = "#{measurement},#{tags} value=#{field_value} #{timestamp_nano}" 
             points << point
         end
