@@ -24,11 +24,13 @@ module Sensu::Extension
       hostname  = influxdb_config[:hostname] 
       port      = influxdb_config[:port] || 8086
       database  = influxdb_config[:database]
+      ssl       = influxdb_config[:ssl] || false
+      protocol  = if ssl then 'https' else 'http' end 
       @username = influxdb_config[:username]
       @password = influxdb_config[:password]
       @timeout  = influxdb_config[:timeout] || 15
 
-      @uri = URI("http://#{hostname}:#{port}/write?db=#{database}")
+      @uri = URI("#{protocol}://#{hostname}:#{port}/write?db=#{database}")
       @http = Net::HTTP::new(@uri.host, @uri.port)         
 
       @logger.info("#{@@extension_name}: Successfully initialized config: hostname: #{hostname}, port: #{port}, database: #{database}, username: #{@username}, timeout: #{@timeout}")

@@ -21,7 +21,8 @@ This extension uses the InfluxDB REST-API directly.
         "port": "8086",
         "database": "metrics",
         "username": "sensu",
-        "password": "m3tr1c54l1f3"
+        "password": "m3tr1c54l1f3",
+        "ssl": false
     }
 }
 ```
