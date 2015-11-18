@@ -29,9 +29,11 @@ module Sensu::Extension
       @username = influxdb_config[:username]
       @password = influxdb_config[:password]
       @timeout  = influxdb_config[:timeout] || 15
+      @CACHE_SIZE = influxdb_config[:cachesize] || 10
 
       @uri = URI("#{protocol}://#{hostname}:#{port}/write?db=#{database}")
       @http = Net::HTTP::new(@uri.host, @uri.port)         
+      @cache = []
 
       @logger.info("#{@@extension_name}: Successfully initialized config: hostname: #{hostname}, port: #{port}, database: #{database}, username: #{@username}, timeout: #{@timeout}")
     end
@@ -50,20 +52,15 @@ module Sensu::Extension
 
     def create_tags(event)
       begin
-
         if event[:client].has_key?(:tags)
           # sorting tags alphabetically in order to increase InfluxDB performance
           incoming_tags = Hash[event[:client][:tags].sort]
-        else
-          # if no tags are provided with the client, we add hostname as a tag.
-          incoming_tags = {"hostname" => event[:client][:address]}
+          tag_strings = []
+          incoming_tags.each { |key,value| tag_strings << "#{key}=#{value}" }
+          tag_strings.join(",")
         end
-
-        tag_strings = []
-        incoming_tags.each { |key,value| tag_strings << "#{key}=#{value}" }
-        tag_strings.join(",")
       rescue => e
-        @logger.error("#{@@extension_name}: unable to create to tags from event data #{e.backtrace.to_s}")
+        @logger.error("#{@@extension_name}: unable to create tags from event data #{e.backtrace.to_s}")
       end
     end
 
@@ -72,6 +69,7 @@ module Sensu::Extension
     end
 
     def create_payload(output, tags)
+      begin
         points = []
 
         output.split(/\r\n|\n/).each do |line|
@@ -83,26 +81,43 @@ module Sensu::Extension
         end
         
         points.join("\n")
+      rescue => e
+        @logger.error("#{@@extension_name}: unable to create payload from output #{output} and tags #{tags}: #{e.backtrace.to_s}")
+      end
     end
 
+    
+    def handle(points)
+      if @cache.length >= @CACHE_SIZE
+        complete_payload = @cache.join('')
+        @logger.debug("cache is full, sending payload #{complete_payload} to influxdb")
+        
+        request = Net::HTTP::Post.new(@uri.request_uri)
+        request.body = complete_payload
+        request.basic_auth(@username, @password)
+
+        @logger.debug("#{@@extension_name}: writing payload #{complete_payload} to endpoint #{@uri.to_s}")
+
+        # check if we still need to do this with batching, and or if this should be replaced with a more highlevel library for handling threads
+        Thread.new do 
+          @http.request(request)
+          request.finish
+        end
+
+        @cache = []
+      else
+        logger.debug("Cache length is #{@cache.length}, will add until #{@CACHE_SIZE}")
+        @cache.push(points)
+      end
+    end
+    
     def run(event)
       begin
         event = MultiJson.load(event)
         tags = create_tags(event)       
         @logger.debug("created tags: #{tags}")
         payload = create_payload(event[:check][:output], tags)
-
-        request = Net::HTTP::Post.new(@uri.request_uri)
-        request.body = payload
-        request.basic_auth(@username, @password)
-
-        @logger.debug("#{@@extension_name}: writing payload #{payload} to endpoint #{@uri.to_s}")
-
-        Thread.new do 
-          @http.request(request)
-          request.finish
-        end
-
+        handle(payload)
       rescue => e
         @logger.error("#{@@extension_name}: unable to post payload to influxdb - #{e.backtrace.to_s}")
       end
