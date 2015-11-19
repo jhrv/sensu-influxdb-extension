@@ -74,10 +74,14 @@ module Sensu::Extension
 
         output.split(/\r\n|\n/).each do |line|
             measurement, field_value, timestamp = line.split(/\s+/)
-            timestamp_nano = Integer(timestamp) * (10 ** 9)
-            field_value = is_number?(field_value) ? field_value.to_f : field_value
-            point = "#{measurement},#{tags} value=#{field_value} #{timestamp_nano}" 
-            points << point
+            begin
+              timestamp_nano = Integer(timestamp) * (10 ** 9)
+              field_value = is_number?(field_value) ? field_value.to_f : field_value
+              point = "#{measurement},#{tags} value=#{field_value} #{timestamp_nano}" 
+              points << point
+            rescue => e
+              @logger.debug("skipping invalid timestamp #{timestamp}")
+            end
         end
         
         points.join("\n")
