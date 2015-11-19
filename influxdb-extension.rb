@@ -29,7 +29,7 @@ module Sensu::Extension
       @username = influxdb_config[:username]
       @password = influxdb_config[:password]
       @timeout  = influxdb_config[:timeout] || 15
-      @CACHE_SIZE = influxdb_config[:cachesize] || 10
+      @CACHE_SIZE = influxdb_config[:cachesize] || 100
 
       @uri = URI("#{protocol}://#{hostname}:#{port}/write?db=#{database}")
       @http = Net::HTTP::new(@uri.host, @uri.port)         
@@ -68,36 +68,13 @@ module Sensu::Extension
       true if Float(input) rescue false
     end
 
-    def create_payload(output, tags)
-      begin
-        points = []
-
-        output.split(/\r\n|\n/).each do |line|
-            measurement, field_value, timestamp = line.split(/\s+/)
-            begin
-              timestamp_nano = Integer(timestamp) * (10 ** 9)
-              field_value = is_number?(field_value) ? field_value.to_f : field_value
-              point = "#{measurement},#{tags} value=#{field_value} #{timestamp_nano}" 
-              points << point
-            rescue => e
-              @logger.debug("skipping invalid timestamp #{timestamp}")
-            end
-        end
-        
-        points.join("\n")
-      rescue => e
-        @logger.error("#{@@extension_name}: unable to create payload from output #{output} and tags #{tags}: #{e.backtrace.to_s}")
-      end
-    end
-
-    
-    def handle(points)
+    def handle(point)
       if @cache.length >= @CACHE_SIZE
-        #complete_payload = @cache.join('')
-        @logger.debug("cache is full, sending payload #{@cache} to influxdb")
+        complete_payload = @cache.join("\n")
+        @logger.debug("cache is full, sending payload #{complete_payload} to influxdb")
         
         request = Net::HTTP::Post.new(@uri.request_uri)
-        request.body = @cache
+        request.body = complete_payload
         request.basic_auth(@username, @password)
 
         @logger.debug("#{@@extension_name}: writing payload #{@cache} to endpoint #{@uri.to_s}")
@@ -111,7 +88,7 @@ module Sensu::Extension
         @cache = []
       else
         logger.debug("Cache length is #{@cache.length}, will add until #{@CACHE_SIZE}")
-        @cache.push(points)
+        @cache.push(point)
       end
     end
     
@@ -120,14 +97,26 @@ module Sensu::Extension
         event = MultiJson.load(event)
         tags = create_tags(event)       
         @logger.debug("created tags: #{tags}")
-        payload = create_payload(event[:check][:output], tags)
-        handle(payload)
+
+        output = event[:check][:output]
+
+        output.split(/\r\n|\n/).each do |line|
+            measurement, field_value, timestamp = line.split(/\s+/)
+            begin
+              timestamp_nano = Integer(timestamp) * (10 ** 9)
+              field_value = is_number?(field_value) ? field_value.to_f : field_value
+              point = "#{measurement},#{tags} value=#{field_value} #{timestamp_nano}" 
+              handle(point)
+            rescue => e
+              @logger.debug("skipping invalid timestamp #{timestamp}")
+            end
+        end
+        
       rescue => e
         @logger.error("#{@@extension_name}: unable to post payload to influxdb - #{e.backtrace.to_s}")
       end
 
       yield("#{@@extension_name}: Handler finished", 0)
     end
-
   end
 end
