@@ -22,7 +22,8 @@ This extension uses the InfluxDB REST-API directly.
         "database": "metrics",
         "username": "sensu",
         "password": "m3tr1c54l1f3",
-        "ssl": false
+        "ssl": false,
+        "buffer_size": 1000
     }
 }
 ```

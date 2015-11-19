@@ -29,11 +29,11 @@ module Sensu::Extension
       @username = influxdb_config[:username]
       @password = influxdb_config[:password]
       @timeout  = influxdb_config[:timeout] || 15
-      @CACHE_SIZE = influxdb_config[:cachesize] || 1000
+      @BUFFER_SIZE = influxdb_config[:buffer_size] || 1000
 
       @uri = URI("#{protocol}://#{hostname}:#{port}/write?db=#{database}")
       @http = Net::HTTP::new(@uri.host, @uri.port)         
-      @cache = []
+      @buffer = []
 
       @logger.info("#{@@extension_name}: Successfully initialized config: hostname: #{hostname}, port: #{port}, database: #{database}, username: #{@username}, timeout: #{@timeout}")
     end
@@ -97,13 +97,13 @@ module Sensu::Extension
             measurement, field_value, timestamp = line.split(/\s+/)
             timestamp = convert_to_nano(timestamp)
             point = "#{measurement},#{tags} value=#{field_value} #{timestamp}" 
-            if @cache.length >= @CACHE_SIZE
-                payload = @cache.join("\n")
+            if @buffer.length >= @BUFFER_SIZE
+                payload = @buffer.join("\n")
                 send_to_influxdb(payload)
-                @cache = []
+                @buffer = []
             else
-                logger.debug("#{@@extension_name}: caching point (#{@cache.length}/#{@CACHE_SIZE})")
-                @cache.push(point)
+                logger.debug("#{@@extension_name}: storing point (#{@buffer.length}/#{@BUFFER_SIZE})")
+                @buffer.push(point)
             end
         end
       rescue => e
