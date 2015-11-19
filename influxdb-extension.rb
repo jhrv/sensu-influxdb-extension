@@ -93,14 +93,14 @@ module Sensu::Extension
     
     def handle(points)
       if @cache.length >= @CACHE_SIZE
-        complete_payload = @cache.join('')
-        @logger.debug("cache is full, sending payload #{complete_payload} to influxdb")
+        #complete_payload = @cache.join('')
+        @logger.debug("cache is full, sending payload #{@cache} to influxdb")
         
         request = Net::HTTP::Post.new(@uri.request_uri)
-        request.body = complete_payload
+        request.body = @cache
         request.basic_auth(@username, @password)
 
-        @logger.debug("#{@@extension_name}: writing payload #{complete_payload} to endpoint #{@uri.to_s}")
+        @logger.debug("#{@@extension_name}: writing payload #{@cache} to endpoint #{@uri.to_s}")
 
         # check if we still need to do this with batching, and or if this should be replaced with a more highlevel library for handling threads
         Thread.new do 
