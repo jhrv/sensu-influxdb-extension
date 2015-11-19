@@ -29,7 +29,7 @@ module Sensu::Extension
       @username = influxdb_config[:username]
       @password = influxdb_config[:password]
       @timeout  = influxdb_config[:timeout] || 15
-      @CACHE_SIZE = influxdb_config[:cachesize] || 100
+      @CACHE_SIZE = influxdb_config[:cachesize] || 1000
 
       @uri = URI("#{protocol}://#{hostname}:#{port}/write?db=#{database}")
       @http = Net::HTTP::new(@uri.host, @uri.port)         
@@ -60,63 +60,57 @@ module Sensu::Extension
           tag_strings.join(",")
         end
       rescue => e
-        @logger.error("#{@@extension_name}: unable to create tags from event data #{e.backtrace.to_s}")
+        @logger.error("#{@@extension_name}: unable to create tags from event data - #{e.backtrace.to_s}")
       end
     end
 
-    def is_number?(input)
-      true if Float(input) rescue false
+    def convert_to_nano(timestamp)
+      begin
+        Integer(timestamp) * (10 ** 9)
+      rescue => e
+        @logger.debug("#{@@extension_name}: invalid timestamp: #{timestamp} - #{e.backtrace.to_s}")
+      end
     end
 
-    def handle(point)
-      if @cache.length >= @CACHE_SIZE
-        complete_payload = @cache.join("\n")
-        @logger.debug("cache is full, sending payload #{complete_payload} to influxdb")
-        
+    def send_to_influxdb(payload)
         request = Net::HTTP::Post.new(@uri.request_uri)
-        request.body = complete_payload
+        request.body = payload 
         request.basic_auth(@username, @password)
 
-        @logger.debug("#{@@extension_name}: writing payload #{@cache} to endpoint #{@uri.to_s}")
+        @logger.debug("#{@@extension_name}: writing payload #{@payload} to endpoint #{@uri.to_s}")
 
-        # check if we still need to do this with batching, and or if this should be replaced with a more highlevel library for handling threads
         Thread.new do 
           @http.request(request)
           request.finish
         end
-
-        @cache = []
-      else
-        logger.debug("Cache length is #{@cache.length}, will add until #{@CACHE_SIZE}")
-        @cache.push(point)
-      end
     end
     
     def run(event)
       begin
         event = MultiJson.load(event)
         tags = create_tags(event)       
-        @logger.debug("created tags: #{tags}")
+        @logger.debug("#{@@extension_name}: created tags: #{tags}")
 
         output = event[:check][:output]
 
         output.split(/\r\n|\n/).each do |line|
             measurement, field_value, timestamp = line.split(/\s+/)
-            begin
-              timestamp_nano = Integer(timestamp) * (10 ** 9)
-              field_value = is_number?(field_value) ? field_value.to_f : field_value
-              point = "#{measurement},#{tags} value=#{field_value} #{timestamp_nano}" 
-              handle(point)
-            rescue => e
-              @logger.debug("skipping invalid timestamp #{timestamp}")
+            timestamp = convert_to_nano(timestamp)
+            point = "#{measurement},#{tags} value=#{field_value} #{timestamp}" 
+            if @cache.length >= @CACHE_SIZE
+                payload = @cache.join("\n")
+                send_to_influxdb(payload)
+                @cache = []
+            else
+                logger.debug("#{@@extension_name}: caching point (#{@cache.length}/#{@CACHE_SIZE})")
+                @cache.push(point)
             end
         end
-        
       rescue => e
-        @logger.error("#{@@extension_name}: unable to post payload to influxdb - #{e.backtrace.to_s}")
+        @logger.error("#{@@extension_name}: unable to post payload to influxdb for event #{event} - #{e.backtrace.to_s}")
       end
 
-      yield("#{@@extension_name}: Handler finished", 0)
+      yield("#{@@extension_name}: handler finished", 0)
     end
   end
 end
