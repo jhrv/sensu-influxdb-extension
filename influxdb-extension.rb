@@ -2,6 +2,7 @@
 
 require 'net/http'
 require 'timeout'
+require 'multi_json'
 
 module Sensu::Extension
   class Influx < Handler
@@ -50,26 +51,22 @@ module Sensu::Extension
       end
     end
 
-    def create_tags(event)
-      begin
-        if event[:client].has_key?(:tags)
-          # sorting tags alphabetically in order to increase InfluxDB performance
-          incoming_tags = Hash[event[:client][:tags].sort]
-          tag_strings = []
-          incoming_tags.each { |key,value| tag_strings << "#{key}=#{value}" }
-          tag_strings.join(",")
-        end
-      rescue => e
-        @logger.error("#{@@extension_name}: unable to create tags from event data - #{e.backtrace.to_s}")
-      end
-    end
+    def create_tags(tags)
+        begin
+            # sorting tags alphabetically in order to increase InfluxDB performance
+            sorted_tags = Hash[tags.sort]
 
-    def convert_to_nano(timestamp)
-      begin
-        Integer(timestamp) * (10 ** 9)
-      rescue => e
-        @logger.debug("#{@@extension_name}: invalid timestamp: #{timestamp} - #{e.backtrace.to_s}")
-      end
+            tag_string = "" 
+            sorted_tags.each do |tag, value|
+                tag_string += ",#{tag}=#{value}"
+            end
+
+            @logger.debug("#{@@extension_name}: created tags: #{tag_string}")
+            tag_string
+        rescue => e
+            @logger.error("#{@@extension_name}: unable to create tag string from #{tags} - #{e.backtrace.to_s}")
+            ""
+        end
     end
 
     def send_to_influxdb(payload)
@@ -77,10 +74,11 @@ module Sensu::Extension
         request.body = payload 
         request.basic_auth(@username, @password)
 
-        @logger.debug("#{@@extension_name}: writing payload #{@payload} to endpoint #{@uri.to_s}")
+        @logger.debug("#{@@extension_name}: writing payload #{payload} to endpoint #{@uri.to_s}")
 
         Thread.new do 
-          @http.request(request)
+          response = @http.request(request)
+          @logger.debug("#{@@extension_name}: influxdb http response code = #{response.code}, body = #{response.body}")
           request.finish
         end
     end
@@ -88,22 +86,28 @@ module Sensu::Extension
     def run(event)
       begin
         event = MultiJson.load(event)
-        tags = create_tags(event)       
-        @logger.debug("#{@@extension_name}: created tags: #{tags}")
-
+        tags = create_tags(event[:client][:tags])       
         output = event[:check][:output]
 
         output.split(/\r\n|\n/).each do |line|
             measurement, field_value, timestamp = line.split(/\s+/)
-            timestamp = convert_to_nano(timestamp)
-            point = "#{measurement},#{tags} value=#{field_value} #{timestamp}" 
+
+            begin
+                timestamp = Integer(timestamp) * (10 ** 9) # convert to nano
+            rescue => e
+                @logger.error("#{@@extension_name}: invalid timestamp: #{timestamp} in event #{event}")
+                next
+            end
+            
+            point = "#{measurement}#{tags} value=#{field_value} #{timestamp}" 
+
             if @buffer.length >= @BUFFER_SIZE
                 payload = @buffer.join("\n")
                 send_to_influxdb(payload)
                 @buffer = []
             else
-                logger.debug("#{@@extension_name}: storing point (#{@buffer.length}/#{@BUFFER_SIZE})")
                 @buffer.push(point)
+                logger.debug("#{@@extension_name}: stored point in buffer (#{@buffer.length}/#{@BUFFER_SIZE})")
             end
         end
       rescue => e
