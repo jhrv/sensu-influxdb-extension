@@ -5,7 +5,7 @@ Sensu extension for sending metrics with graphite data-format to InfluxDB (>=0.9
 
 For each sensu-event it receives, it will transform each line of data into a InfluxDB **measurement** containing optional tags defined on the sensu client. It will buffer up measurements until it reaches the configured length, and then post the data directly to the InfluxDB REST-API using the [line protocol](https://influxdb.com/docs/v0.9/write_protocols/line.html).
 
-Example line of graphite data-format ('[metric_path] [value] [timestamp]\n'):
+Example line of graphite data-format ([metric_path] [value] [timestamp]\n):
 
 ```
 key_a 1337 1435216969
@@ -93,7 +93,7 @@ Example sensu-client definition:
 }
 ```
 
-... will turn into the following tags for the measurements: ',environment=dev,application=myapp,hostname=my-app-in-env.domain.tld'
+... will turn into the following tags for the measurements: **,environment=dev,application=myapp,hostname=my-app-in-env.domain.tld**
 
 #timestamps
 
