@@ -30,7 +30,7 @@ module Sensu::Extension
       @username = influxdb_config[:username]
       @password = influxdb_config[:password]
       @timeout  = influxdb_config[:timeout] || 15
-      @BUFFER_SIZE = influxdb_config[:buffer_size] || 1000
+      @BUFFER_SIZE = influxdb_config[:buffer_size] || 100
 
       @uri = URI("#{protocol}://#{hostname}:#{port}/write?db=#{database}")
       @http = Net::HTTP::new(@uri.host, @uri.port)         
