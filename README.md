@@ -3,10 +3,19 @@ sensu-influxdb-extension
 
 Sensu extension for sending metrics with graphite data-format to InfluxDB (>=0.9).
 
-For each sensu-event it receives, it will split the sensu-output into **measurements** and **points**  and extract tags
-defined on the sensu-client configuration into **tags**.
+For each sensu-event it receives, it will transform each line of data into a InfluxDB **measurement** containing optional tags defined on the sensu client. It will buffer up measurements until it reaches the configured length, and then post the data directly to the InfluxDB REST-API using the [line protocol](https://influxdb.com/docs/v0.9/write_protocols/line.html).
 
-This extension uses the InfluxDB REST-API directly.
+Example line of graphite data-format ('[metric_path] [value] [timestamp]\n'):
+
+```
+key_a 1337 1435216969
+```
+
+will be transformed into the following measurement...
+
+```
+key_a[,<sensu_client_tags>] value=1337.0 1435216969000000000\n...
+```
 
 # Getting started
 
@@ -23,7 +32,7 @@ This extension uses the InfluxDB REST-API directly.
         "username": "sensu",
         "password": "m3tr1c54l1f3",
         "ssl": false,
-        "buffer_size": 1000
+        "buffer_size": 100
     }
 }
 ```
@@ -53,7 +62,7 @@ This extension uses the InfluxDB REST-API directly.
  }
 ```
 
-5)  Restart your sensu-server and sensu-client(s)
+5) Restart your sensu-server and sensu-client(s)
 
 
 If you follow the sensu-server log (/var/log/sensu/sensu-server.log) you should see the following output if all is working correctly:
@@ -63,9 +72,11 @@ If you follow the sensu-server log (/var/log/sensu/sensu-server.log) you should 
 Successfully initialized config: hostname: ....
 ```
 
-# sensu-events => InfluxDB concepts
+#tags 
 
-###sensu-client tags => influxdb tags
+If you want to tag your InfluxDB measurements (great for querying, as tags are indexed), you can define this on the sensu-client.
+
+Example sensu-client definition:
 
 ```
 {
@@ -82,26 +93,8 @@ Successfully initialized config: hostname: ....
 }
 ```
 
-... will turn into the following tags for the series: 'environment=dev,application=myapp,hostname=my-app-in-env.domain.tld'
+... will turn into the following tags for the measurements: ',environment=dev,application=myapp,hostname=my-app-in-env.domain.tld'
 
-If no tags are defined on the client, it will by default create the tag hostname using the clients address.
+#timestamps
 
-###sensu-output (graphite data-format) => measurements
-
-Graphite data-format = '[metric_path] [value] [timestamp]\n'
-
-Example output:
-
-```
-key_a 1337 1435216969
-key_b 6969 1435216969
-key_c 1234 1435216969
-```
-
-... will turn into the following payload written to the InfluxDB write endpoint
-
-```
-key_a,<tags> value=1337.0 1435216969000000000\nkey_b,<tags> value=6969.0 1435216969000000000\nkey_c,<tags> value=1234.0 1435216969000000000
-```
-
-Note that the timestamp has been converted to nanoseconds as this is assumed by InfluxDB unless otherwise specified. In addition all non-string values are converted to float.
+Timestamp will be converted to nanoseconds as this is assumed by InfluxDB unless otherwise specified. 
