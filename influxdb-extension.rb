@@ -22,21 +22,25 @@ module Sensu::Extension
       
       validate_config(influxdb_config)
        
-      hostname  = influxdb_config[:hostname] 
-      port      = influxdb_config[:port] || 8086
-      database  = influxdb_config[:database]
-      ssl       = influxdb_config[:ssl] || false
-      protocol  = if ssl then 'https' else 'http' end 
-      @username = influxdb_config[:username]
-      @password = influxdb_config[:password]
-      @timeout  = influxdb_config[:timeout] || 15
-      @BUFFER_SIZE = influxdb_config[:buffer_size] || 100
+      hostname         = influxdb_config[:hostname] 
+      port             = influxdb_config[:port] || 8086
+      database         = influxdb_config[:database]
+      ssl              = influxdb_config[:ssl] || false
+      precision        = influxdb_config[:precision] || 's'
+      retention_policy = influxdb_config[:retention_policy]
+      rp_queryparam    = if retention_policy.nil? then "" else "&rp=#{retention_policy}" end
+      protocol         = if ssl then 'https' else 'http' end 
+      username         = influxdb_config[:username]
+      password         = influxdb_config[:password]
+      auth_queryparam  = if username.nil? or password.nil? then "" else "&u=#{username}&p=#{password}" end
+      @timeout         = influxdb_config[:timeout] || 15
+      @BUFFER_SIZE     = influxdb_config[:buffer_size] || 100
 
-      @uri = URI("#{protocol}://#{hostname}:#{port}/write?db=#{database}")
+      @uri = URI("#{protocol}://#{hostname}:#{port}/write?db=#{database}&precision=#{precision}#{rp_queryparam}#{auth_queryparam}")
       @http = Net::HTTP::new(@uri.host, @uri.port)         
       @buffer = []
 
-      @logger.info("#{@@extension_name}: Successfully initialized config: hostname: #{hostname}, port: #{port}, database: #{database}, username: #{@username}, timeout: #{@timeout}")
+      @logger.info("#{@@extension_name}: Successfully initialized config: hostname: #{hostname}, port: #{port}, database: #{database}, uri: #{@uri.to_s}, username: #{username}, timeout: #{@timeout}, buffer_size: #{@BUFFER_SIZE}")
     end
     
     def validate_config(config)
@@ -72,15 +76,10 @@ module Sensu::Extension
     def send_to_influxdb(payload)
         request = Net::HTTP::Post.new(@uri.request_uri)
         request.body = payload 
-        request.basic_auth(@username, @password)
-
+        
         @logger.debug("#{@@extension_name}: writing payload #{payload} to endpoint #{@uri.to_s}")
-
-        Thread.new do 
-          response = @http.request(request)
-          @logger.debug("#{@@extension_name}: influxdb http response code = #{response.code}, body = #{response.body}")
-          request.finish
-        end
+        response = @http.request(request)
+        @logger.debug("#{@@extension_name}: influxdb http response code = #{response.code}, body = #{response.body}")
     end
     
     def run(event)
@@ -92,23 +91,16 @@ module Sensu::Extension
         output.split(/\r\n|\n/).each do |line|
             measurement, field_value, timestamp = line.split(/\s+/)
 
-            begin
-                timestamp = Integer(timestamp) * (10 ** 9) # convert to nano
-            rescue => e
-                @logger.error("#{@@extension_name}: invalid timestamp: #{timestamp} in event #{event}")
-                next
-            end
-            
             point = "#{measurement}#{tags} value=#{field_value} #{timestamp}" 
 
             if @buffer.length >= @BUFFER_SIZE
                 payload = @buffer.join("\n")
                 send_to_influxdb(payload)
                 @buffer = []
-            else
-                @buffer.push(point)
-                logger.debug("#{@@extension_name}: stored point in buffer (#{@buffer.length}/#{@BUFFER_SIZE})")
             end
+
+            @buffer.push(point)
+            logger.debug("#{@@extension_name}: stored point in buffer (#{@buffer.length}/#{@BUFFER_SIZE})")
         end
       rescue => e
         @logger.error("#{@@extension_name}: unable to post payload to influxdb for event #{event} - #{e.backtrace.to_s}")
