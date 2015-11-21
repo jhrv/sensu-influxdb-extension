@@ -3,7 +3,7 @@ sensu-influxdb-extension
 
 Sensu extension for sending metrics with graphite data-format to InfluxDB (>=0.9).
 
-For each sensu-event it receives, it will transform each line of data into a InfluxDB **measurement** containing optional tags defined on the sensu client. It will buffer up measurements until it reaches the configured length, and then post the data directly to the InfluxDB REST-API using the [line protocol](https://influxdb.com/docs/v0.9/write_protocols/line.html).
+For each sensu-event it receives, it will transform each line of data into a datapoint in InfluxDB containing optional tags defined on the sensu client. It will buffer up points until it reaches the configured length (see **buffer_size**), and then post the data directly to the InfluxDB REST-API using the [line protocol](https://influxdb.com/docs/v0.9/write_protocols/line.html).
 
 Example line of graphite data-format ([metric_path] [value] [timestamp]\n):
 
@@ -23,19 +23,32 @@ key_a[,<sensu_client_tags>] value=1337.0 1435216969000000000\n...
 
 2) Create your InfluxDB configuration for Sensu (or copy and edit *influxdb-extension.json.tmpl*) inside the sensu config folder (/etc/sensu/conf.d). 
 
+Example of a minimal configuration file
 ```
 {
     "influxdb-extension": {
         "hostname": "influxdb.mydomain.tld",
-        "port": "8086",
         "database": "metrics",
-        "username": "sensu",
-        "password": "m3tr1c54l1f3",
-        "ssl": false,
-        "buffer_size": 100
     }
 }
 ```
+
+## Full list of configuration options
+
+| variable          | default value         |
+| ----------------- | --------------------- |
+| hostname          |       none (required) |
+| port              |                  8086 | 
+| database          |       none (required) |
+| buffer_size       |                   100 |
+| ssl               |                 false |
+| precision         |                 s (*) |
+| retention_policy  |                  none |
+| username          |                  none |
+| password          |                  none |
+
+(*) s = seconds. Other valid options are n, u, ms, m, h. See [influxdb docs](https://influxdb.com/docs/v0.9/write_protocols/write_syntax.html) for more details
+
 
 3) Add the extension to your sensu-handler configuration 
 
@@ -95,6 +108,15 @@ Example sensu-client definition:
 
 ... will turn into the following tags for the measurements: **,environment=dev,application=myapp,hostname=my-app-in-env.domain.tld**
 
-#timestamps
 
-Timestamp will be converted to nanoseconds as this is assumed by InfluxDB unless otherwise specified. 
+#performance
+
+The extension will buffer up points until it reaches the configured buffer_size length, and then post all the points in the buffer to InfluxDB. 
+Depending on your load, you will want to tune the buffer_size configuration to match your environment.
+
+Example:
+If you set the buffer_size to 1000, and you have a event-frequency of 100 per second, it will give you about a ten second lag before the data is available through the InfluxDB query API.
+
+buffer_size / event-frequency = latency
+
+I recommend testing different buffer_sizes depending on your environment and requirements.

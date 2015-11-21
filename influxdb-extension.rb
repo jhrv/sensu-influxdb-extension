@@ -1,7 +1,6 @@
 #!/usr/bin/env ruby
 
 require 'net/http'
-require 'timeout'
 require 'multi_json'
 
 module Sensu::Extension
@@ -33,7 +32,6 @@ module Sensu::Extension
       username         = influxdb_config[:username]
       password         = influxdb_config[:password]
       auth_queryparam  = if username.nil? or password.nil? then "" else "&u=#{username}&p=#{password}" end
-      @timeout         = influxdb_config[:timeout] || 15
       @BUFFER_SIZE     = influxdb_config[:buffer_size] || 100
 
       @uri = URI("#{protocol}://#{hostname}:#{port}/write?db=#{database}&precision=#{precision}#{rp_queryparam}#{auth_queryparam}")
