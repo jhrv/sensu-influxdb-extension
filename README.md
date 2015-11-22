@@ -1,7 +1,7 @@
 sensu-influxdb-extension
 ========================
 
-[Sensu](https://sensuapp.org/) extension for sending metrics with graphite data-format to InfluxDB (>=0.9).
+[Sensu](https://sensuapp.org/) extension for sending metrics with graphite data-format to [InfluxDB](https://influxdb.com/) (>=0.9).
 
 For each sensu-event it receives, it will transform each line of data into a datapoint in InfluxDB containing optional tags defined on the sensu client. It will buffer up points until it reaches the configured length (see **buffer_size**), and then post the data directly to the InfluxDB REST-API using the [line protocol](https://influxdb.com/docs/v0.9/write_protocols/line.html).
 
