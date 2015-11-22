@@ -8,13 +8,13 @@ For each sensu-event it receives, it will transform each line of data into a dat
 Example line of graphite data-format ([metric_path] [value] [timestamp]\n):
 
 ```
-key_a 1337 1435216969
+key_a 6996 1435216969
 ```
 
-will be transformed into the following data-point...
+will be transformed into the following data-point ([line protocol](https://influxdb.com/docs/v0.9/write_protocols/line.html))...
 
 ```
-key_a[,<sensu_client_tags>] value=1337.0 1435216969000000000\n...
+key_a[,<sensu_client_tags>] value=6996.0 1435216969\n...
 ```
 
 # Getting started
