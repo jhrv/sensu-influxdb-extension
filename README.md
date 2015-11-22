@@ -106,7 +106,7 @@ Example sensu-client definition:
 }
 ```
 
-... will turn into the following tags for the measurements: **,environment=dev,application=myapp,hostname=my-app-in-env.domain.tld**
+... will turn into the following tags for that point: **,environment=dev,application=myapp,hostname=my-app-in-env.domain.tld**
 
 
 #performance
