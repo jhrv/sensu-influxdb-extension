@@ -4,7 +4,7 @@ require 'net/http'
 require 'multi_json'
 
 module Sensu::Extension
-  class Influx < Handler
+  class InfluxDB < Handler
     
     @@extension_name = 'influxdb-extension'
 
@@ -38,7 +38,7 @@ module Sensu::Extension
       @http = Net::HTTP::new(@uri.host, @uri.port)         
       @buffer = []
 
-      @logger.info("#{@@extension_name}: Successfully initialized config: hostname: #{hostname}, port: #{port}, database: #{database}, uri: #{@uri.to_s}, username: #{username}, timeout: #{@timeout}, buffer_size: #{@BUFFER_SIZE}")
+      @logger.info("#{@@extension_name}: Successfully initialized config: hostname: #{hostname}, port: #{port}, database: #{database}, uri: #{@uri.to_s}, username: #{username}, buffer_size: #{@BUFFER_SIZE}")
     end
     
     def validate_config(config)
@@ -98,7 +98,7 @@ module Sensu::Extension
             end
 
             @buffer.push(point)
-            logger.debug("#{@@extension_name}: stored point in buffer (#{@buffer.length}/#{@BUFFER_SIZE})")
+            @logger.debug("#{@@extension_name}: stored point in buffer (#{@buffer.length}/#{@BUFFER_SIZE})")
         end
       rescue => e
         @logger.error("#{@@extension_name}: unable to post payload to influxdb for event #{event} - #{e.backtrace.to_s}")
