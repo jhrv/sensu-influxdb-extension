@@ -79,6 +79,10 @@ module Sensu::Extension
         response = @http.request(request)
         @logger.debug("#{@@extension_name}: influxdb http response code = #{response.code}, body = #{response.body}")
     end
+
+    def is_number?(input)
+      true if Integer(input) rescue false
+    end
     
     def run(event)
       begin
@@ -89,6 +93,11 @@ module Sensu::Extension
         output.split(/\r\n|\n/).each do |line|
             measurement, field_value, timestamp = line.split(/\s+/)
 
+            if not is_number?(timestamp)
+              @logger.error("invalid timestamp, skipping event #{event}")
+              next
+            end
+            
             point = "#{measurement}#{tags} value=#{field_value} #{timestamp}" 
 
             if @buffer.length >= @BUFFER_SIZE
