@@ -1,9 +1,9 @@
 sensu-influxdb-extension
 ========================
 
-[Sensu](https://sensuapp.org/) extension for sending metrics with graphite data-format to [InfluxDB](https://influxdb.com/).
+[Sensu](https://sensuapp.org/) extension for sending metrics with graphite data-format to [InfluxDB](https://influxdb.com/). For more arbitrary event-type data, check out [sensu-influxdb-proxy-extension](https://github.com/jhrv/sensu-influxdb-proxy-extension) instead.
 
-For each sensu-event it receives, it will transform each line of data into a datapoint in InfluxDB containing optional tags defined on the sensu client. It will buffer up points until it reaches the configured length (see **buffer_size**), and then post the data directly to the InfluxDB REST-API using the [line protocol](https://influxdb.com/docs/v0.9/write_protocols/line.html).
+For each sensu-event it receives, it will transform each line of data into a InfluxDB datapoint, containing optional tags defined on the sensu client. It will buffer up points until it reaches the configured length or maximum age (see **buffer_size** and **buffer_max_age**), and then post the data directly to the InfluxDB REST-API using the [line protocol](https://influxdb.com/docs/v0.9/write_protocols/line.html).
 
 Example line of graphite data-format ([metric_path] [value] [timestamp]\n):
 
@@ -40,7 +40,8 @@ Example of a minimal configuration file
 | hostname          |       none (required) |
 | port              |                  8086 | 
 | database          |       none (required) |
-| buffer_size       |                   100 |
+| buffer_size       |           100 (lines) |
+| buffer_max_age    |          10 (seconds) |
 | ssl               |                 false |
 | precision         |                 s (*) |
 | retention_policy  |                  none |
@@ -111,12 +112,14 @@ Example sensu-client definition:
 
 #performance
 
-The extension will buffer up points until it reaches the configured buffer_size length, and then post all the points in the buffer to InfluxDB. 
-Depending on your load, you will want to tune the buffer_size configuration to match your environment.
+The extension will buffer up points until it reaches the configured **buffer_size** length or **buffer_max_age**, and then post all the points in the buffer to InfluxDB. 
+Depending on your load, you will want to tune these configurations to match your environment.
 
 Example:
-If you set the buffer_size to 1000, and you have a event-frequency of 100 per second, it will give you about a ten second lag before the data is available through the InfluxDB query API.
+If you set the **buffer_size** to 1000, and you have a event-frequency of 100 per second, it will give you about a ten second lag before the data is available through the InfluxDB query API.
 
-buffer_size / event-frequency = latency
+**buffer_size** / event-frequency = latency 
 
-I recommend testing different buffer_sizes depending on your environment and requirements.
+However, if you set the **buffer_max_age** to 5 seconds, it will flush the buffer each time it exeeds this limit.
+
+I recommend testing different **buffer_size**s and **buffer_max_age**s depending on your environment and requirements.
