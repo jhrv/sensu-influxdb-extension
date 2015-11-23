@@ -94,7 +94,7 @@ module Sensu::Extension
             measurement, field_value, timestamp = line.split(/\s+/)
 
             if not is_number?(timestamp)
-              @logger.error("invalid timestamp, skipping event #{event}")
+              @logger.error("invalid timestamp, skipping line in event #{event}")
               next
             end
             
