@@ -16,29 +16,6 @@ module Sensu::Extension
       'Transforms and sends metrics to InfluxDB'
     end
 
-    def run(event)
-      begin
-        if buffer_too_old? or buffer_too_big?
-          flush_buffer
-        end
-        
-        event = MultiJson.load(event)
-        tags = create_tags(event[:client][:tags])       
-        output = event[:check][:output]
-
-        output.split(/\r\n|\n/).each do |line|
-            measurement, field_value, timestamp = line.split(/\s+/)
-            point = "#{measurement}#{tags} value=#{field_value} #{timestamp}" 
-            @buffer.push(point)
-            @logger.debug("#{@@extension_name}: stored point in buffer (#{@buffer.length}/#{@BUFFER_SIZE})")
-        end
-      rescue => e
-        @logger.error("#{@@extension_name}: unable to post payload to influxdb for event #{event} - #{e.backtrace.to_s}")
-      end
-
-      yield("#{@@extension_name}: handler finished", 0)
-    end
-    
     def post_init
       influxdb_config = settings[@@extension_name]
       
@@ -65,6 +42,30 @@ module Sensu::Extension
 
       @logger.info("#{@@extension_name}: successfully initialized config: hostname: #{hostname}, port: #{port}, database: #{database}, uri: #{@uri.to_s}, username: #{username}, buffer_size: #{@BUFFER_SIZE}, buffer_max_age: #{@BUFFER_MAX_AGE}")
     end
+
+    def run(event)
+      begin
+        if buffer_too_old? or buffer_too_big?
+          flush_buffer
+        end
+        
+        event = MultiJson.load(event)
+        tags = create_tags(event[:client][:tags])       
+        output = event[:check][:output]
+
+        output.split(/\r\n|\n/).each do |line|
+            measurement, field_value, timestamp = line.split(/\s+/)
+            point = "#{measurement}#{tags} value=#{field_value} #{timestamp}" 
+            @buffer.push(point)
+            @logger.debug("#{@@extension_name}: stored point in buffer (#{@buffer.length}/#{@BUFFER_SIZE})")
+        end
+      rescue => e
+        @logger.error("#{@@extension_name}: unable to post payload to influxdb for event #{event} - #{e.backtrace.to_s}")
+      end
+
+      yield("#{@@extension_name}: handler finished", 0)
+    end
+    
 
     def create_tags(tags)
         begin
