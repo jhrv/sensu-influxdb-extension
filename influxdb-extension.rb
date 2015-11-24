@@ -63,7 +63,7 @@ module Sensu::Extension
       @buffer = []
       @buffer_flushed = Time.now.to_i
 
-      @logger.info("#{@@extension_name}: Successfully initialized config: hostname: #{hostname}, port: #{port}, database: #{database}, uri: #{@uri.to_s}, username: #{username}, buffer_size: #{@BUFFER_SIZE}, buffer_max_age: #{@BUFFER_MAX_AGE}")
+      @logger.info("#{@@extension_name}: successfully initialized config: hostname: #{hostname}, port: #{port}, database: #{database}, uri: #{@uri.to_s}, username: #{username}, buffer_size: #{@BUFFER_SIZE}, buffer_max_age: #{@BUFFER_MAX_AGE}")
     end
 
     def create_tags(tags)
@@ -85,7 +85,7 @@ module Sensu::Extension
     end
 
     def send_to_influxdb(payload)
-        request = net::http::post.new(@uri.request_uri)
+        request = Net::HTTP::Post.new(@uri.request_uri)
         request.body = payload 
         
         @logger.debug("#{@@extension_name}: writing payload #{payload} to endpoint #{@uri.to_s}")
@@ -111,12 +111,12 @@ module Sensu::Extension
 
     def validate_config(config)
       if config.nil?
-        raise argumenterror, "no configuration for #{@@extension_name} provided. exiting..."
+        raise ArgumentError, "no configuration for #{@@extension_name} provided. exiting..."
       end
 
       ["hostname", "database"].each do |required_setting| 
         if config[required_setting].nil? 
-          raise argumenterror, "required setting #{required_setting} not provided to extension. this should be provided as json element with key '#{@@extension_name}'. exiting..."
+          raise ArgumentError, "required setting #{required_setting} not provided to extension. this should be provided as json element with key '#{@@extension_name}'. exiting..."
         end
       end
     end
