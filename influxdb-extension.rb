@@ -69,7 +69,7 @@ module Sensu::Extension
     def create_tags(tags)
         begin
             # sorting tags alphabetically in order to increase influxdb performance
-            sorted_tags = hash[tags.sort]
+            sorted_tags = Hash[tags.sort]
 
             tag_string = "" 
             sorted_tags.each do |tag, value|
