@@ -50,7 +50,9 @@ module Sensu::Extension
         end
         
         event = MultiJson.load(event)
-        tags = create_tags(event[:client][:tags])       
+        client_tags = event[:client][:tags] || Hash.new
+        check_tags = event[:check][:tags] || Hash.new
+        tags = create_tags(client_tags.merge(check_tags))       
         output = event[:check][:output]
 
         output.split(/\r\n|\n/).each do |line|

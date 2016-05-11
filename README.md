@@ -86,9 +86,9 @@ If you follow the sensu-server log (/var/log/sensu/sensu-server.log) you should 
 Successfully initialized config: hostname: ....
 ```
 
-#tags 
+#tags (optional)
 
-If you want to tag your InfluxDB measurements (great for querying, as tags are indexed), you can define this on the sensu-client.
+If you want to tag your InfluxDB measurements (great for querying, as tags are indexed), you can define this on the sensu-client as well as on the checks definition.
 
 Example sensu-client definition:
 
@@ -107,8 +107,31 @@ Example sensu-client definition:
 }
 ```
 
-... will turn into the following tags for that point: **,environment=dev,application=myapp,hostname=my-app-in-env.domain.tld**
 
+Example check definition:
+
+```
+{
+  "checks": {
+    "metric_cpu": {
+      "command": "/opt/sensu/embedded/bin/ruby /path/to/script.rb",
+      "interval": 20,
+      "standalone": true,
+      "type": "metric",
+      "handlers": [
+        "metrics"
+      ],
+      "tags": {
+        "mytag": "xyz"
+      }
+    } 
+  }
+}
+```
+
+... will turn into the following tags for that point: **,environment=dev,application=myapp,hostname=my-app-in-env.domain.tld,mytag=xyz**
+
+If both the client and the check tags have the same key, the one defined on the check will overwrite/win the merge.
 
 #performance
 
