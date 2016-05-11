@@ -57,6 +57,12 @@ module Sensu::Extension
 
         output.split(/\r\n|\n/).each do |line|
             measurement, field_value, timestamp = line.split(/\s+/)
+
+            if not is_number?(timestamp)
+              @logger.error("invalid timestamp, skipping line in event #{event}")
+              next
+            end
+            
             point = "#{measurement}#{tags} value=#{field_value} #{timestamp}" 
             @buffer.push(point)
             @logger.debug("#{@@extension_name}: stored point in buffer (#{@buffer.length}/#{@BUFFER_SIZE})")
@@ -123,5 +129,9 @@ module Sensu::Extension
         end
       end
     end
+
+    def is_number?(input)
+      true if Integer(input) rescue false
+    end 
   end
 end
