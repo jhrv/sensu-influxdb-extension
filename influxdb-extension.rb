@@ -52,7 +52,7 @@ module Sensu::Extension
         event = JSON.parse(event)
         client_tags = event['client']['tags'] || Hash.new
         check_tags = event['check']['tags'] || Hash.new
-        tags = create_tags(client_tags.merge(check_tags))       
+        tags = create_tags(client_tags.merge(check_tags))
         output = event['check']['output']
 
         output.split(/\r\n|\n/).each do |line|
@@ -81,7 +81,9 @@ module Sensu::Extension
             sorted_tags = Hash[tags.sort]
 
             tag_string = "" 
+
             sorted_tags.each do |tag, value|
+                next if value.to_s.empty? # skips tags without values
                 tag_string += ",#{tag}=#{value}"
             end
 
