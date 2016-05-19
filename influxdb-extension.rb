@@ -25,6 +25,7 @@ module Sensu::Extension
       port             = influxdb_config['port'] || 8086
       database         = influxdb_config['database']
       ssl              = influxdb_config['ssl'] || false
+      ssl_cert 	       = influxdb_config['ssl_cert'] 
       precision        = influxdb_config['precision'] || 's'
       retention_policy = influxdb_config['retention_policy']
       rp_queryparam    = if retention_policy.nil? then "" else "&rp=#{retention_policy}" end
@@ -37,6 +38,12 @@ module Sensu::Extension
 
       @uri = URI("#{protocol}://#{hostname}:#{port}/write?db=#{database}&precision=#{precision}#{rp_queryparam}#{auth_queryparam}")
       @http = Net::HTTP::new(@uri.host, @uri.port)         
+      if ssl
+        @http.ssl_version = :TLSv1
+        @http.use_ssl = true
+        @http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+        @http.ca_file = ssl_cert
+      end
       @buffer = []
       @buffer_flushed = Time.now.to_i
 
