@@ -1,7 +1,7 @@
 #!/usr/bin/env ruby
 
 require 'net/http'
-require 'json'
+require 'multi_json'
 
 module Sensu::Extension
   class InfluxDB < Handler
@@ -49,7 +49,7 @@ module Sensu::Extension
           flush_buffer
         end
         
-        event = JSON.parse(event)
+        event = MultiJson.load(event)
         client_tags = event['client']['tags'] || Hash.new
         check_tags = event['check']['tags'] || Hash.new
         tags = create_tags(client_tags.merge(check_tags))
