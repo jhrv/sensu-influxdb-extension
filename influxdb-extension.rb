@@ -59,7 +59,7 @@ module Sensu::Extension
             measurement, field_value, timestamp = line.split(/\s+/)
 
             if not is_number?(timestamp)
-              @logger.error("invalid timestamp, skipping line in event #{event}")
+              @logger.debug("invalid timestamp, skipping line in event #{event}")
               next
             end
             
@@ -68,7 +68,7 @@ module Sensu::Extension
             @logger.debug("#{@@extension_name}: stored point in buffer (#{@buffer.length}/#{@BUFFER_SIZE})")
         end
       rescue => e
-        @logger.error("#{@@extension_name}: unable to post payload to influxdb for event #{event} - #{e.backtrace.to_s}")
+        @logger.debug("#{@@extension_name}: unable to post payload to influxdb for event #{event} - #{e.backtrace.to_s}")
       end
 
       yield("#{@@extension_name}: handler finished", 0)
@@ -90,7 +90,7 @@ module Sensu::Extension
             @logger.debug("#{@@extension_name}: created tags: #{tag_string}")
             tag_string
         rescue => e
-            @logger.error("#{@@extension_name}: unable to create tag string from #{tags} - #{e.backtrace.to_s}")
+            @logger.debug("#{@@extension_name}: unable to create tag string from #{tags} - #{e.backtrace.to_s}")
             ""
         end
     end
@@ -101,7 +101,7 @@ module Sensu::Extension
         
         @logger.debug("#{@@extension_name}: writing payload #{payload} to endpoint #{@uri.to_s}")
         response = @http.request(request)
-        @logger.debug("#{@@extension_name}: influxdb http response code = #{response.code}, body = #{response.body}")
+        @logger.info("#{@@extension_name}: influxdb http response code = #{response.code}, body = #{response.body}")
     end
 
     def flush_buffer
