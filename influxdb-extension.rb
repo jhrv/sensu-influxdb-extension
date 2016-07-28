@@ -70,8 +70,6 @@ module Sensu::Extension
       rescue => e
         @logger.debug("#{@@extension_name}: unable to post payload to influxdb for event #{event} - #{e.backtrace.to_s}")
       end
-
-      yield("#{@@extension_name}: handler finished", 0)
     end
     
 
