@@ -32,8 +32,8 @@ module Sensu::Extension
       username         = influxdb_config['username']
       password         = influxdb_config['password']
       auth_queryparam  = if username.nil? or password.nil? then "" else "&u=#{username}&p=#{password}" end
-      @BUFFER_SIZE     = influxdb_config['buffer_size'] || 100
-      @BUFFER_MAX_AGE  = influxdb_config['buffer_max_age'] || 10
+      @BUFFER_SIZE     = influxdb_config.key?('buffer_size') ? influxdb_config['buffer_size'].to_i :  100
+      @BUFFER_MAX_AGE  = influxdb_config.key?('buffer_max_age') ? influxdb_config['buffer_max_age'].to_i : 10
 
       @uri = URI("#{protocol}://#{hostname}:#{port}/write?db=#{database}&precision=#{precision}#{rp_queryparam}#{auth_queryparam}")
       @http = Net::HTTP::new(@uri.host, @uri.port)         
