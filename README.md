@@ -47,9 +47,9 @@ Example of a minimal configuration file
 | retention_policy  |                  none |
 | username          |                  none |
 | password          |                  none |
+| retry_file        | /var/log/sensu/<br/>influxdb_retry_payload.log|
 
 (*) s = seconds. Other valid options are n, u, ms, m, h. See [influxdb docs](https://influxdb.com/docs/v0.9/write_protocols/write_syntax.html) for more details
-
 
 3) Add the extension to your sensu-handler configuration 
 
@@ -165,7 +165,7 @@ measurement = app.downloads, tags = platform => iOS;device => iPad , value = 92,
 
 The event output tags will be merged with client and check definition tags and sent to InfluxDB as usual.
 
-#performance
+# Performance
 
 The extension will buffer up points until it reaches the configured **buffer_size** length or **buffer_max_age**, and then post all the points in the buffer to InfluxDB. 
 Depending on your load, you will want to tune these configurations to match your environment.
@@ -178,3 +178,10 @@ If you set the **buffer_size** to 1000, and you have a event-frequency of 100 pe
 However, if you set the **buffer_max_age** to 5 seconds, it will flush the buffer each time it exeeds this limit.
 
 I recommend testing different **buffer_size**s and **buffer_max_age**s depending on your environment and requirements.
+
+
+# Retry payload
+
+There are cases where the target InfluxDB endpoint is not available due to service or network unavailability. InfluxDB gives a response code of `204` on successful processing of the post request. If the request failed or gives a different return code, then the payload will be written to a file. You can process it later and send it to InfluxDB for once it is up.
+
+You can set the retry file in the influxdb.json by setting the variable `retry_file`. The default value is `/var/log/sensu/influxdb_retry_payload.log`.

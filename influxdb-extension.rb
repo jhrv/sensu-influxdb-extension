@@ -32,6 +32,7 @@ module Sensu::Extension
       username         = influxdb_config[:username]
       password         = influxdb_config[:password]
       auth_queryparam  = if username.nil? or password.nil? then "" else "&u=#{username}&p=#{password}" end
+      @retry_file      = if influxdb_config[:retry_file].nil? then "/var/log/sensu/influxdb_retry_payload.log" else influxdb_config[:retry_file] end
       @BUFFER_SIZE     = if influxdb_config.key?(:buffer_size) then influxdb_config[:buffer_size].to_i else 100 end
       @BUFFER_MAX_AGE  = if influxdb_config.key?(:buffer_max_age) then influxdb_config[:buffer_max_age].to_i else 10 end
 
@@ -100,11 +101,22 @@ module Sensu::Extension
     end
 
     def send_to_influxdb(payload)
-     request = Net::HTTP::Post.new(@uri.request_uri)
+      begin
+        request = Net::HTTP::Post.new(@uri.request_uri)
         request.body = payload
         @logger.debug("#{@@extension_name}: writing payload #{payload} to endpoint #{@uri.to_s}")
         response = @http.request(request)
         @logger.info("#{@@extension_name}: influxdb http response code = #{response.code}, body = #{response.body}")
+        # Handle error cases by logging payload into a retry log. Push them to influxdb later.
+        if response.code != "204" #204 is success code for influxdb
+          @logger.error("#{@@extension_name}: Connected to influxdb but writing payload to endpoint #{@uri.to_s} failed")
+          write_to_file(payload)
+        end
+      rescue Exception => e
+        @logger.error("#{@@extension_name}: writing payload to endpoint #{@uri.to_s} failed.")
+        @logger.error("Error - #{e.message}")
+        write_to_file(payload)
+      end
     end
 
     def flush_buffer
@@ -121,6 +133,12 @@ module Sensu::Extension
 
     def buffer_too_big?
       @buffer.length >= @BUFFER_SIZE
+    end
+
+    def write_to_file(payload)
+      File.open(@retry_file, "a+") do |f|
+        f.write "#{payload}"
+      end
     end
 
     def validate_config(config)
