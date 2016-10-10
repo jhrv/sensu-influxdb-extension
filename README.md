@@ -57,7 +57,7 @@ Example of a minimal configuration file
 | username          |                  none |
 | password          |                  none |
 
-(*) Optional file with trusted CA certificates
+(*) Optional file with trusted CA certificates  
 (**) s = seconds. Other valid options are n, u, ms, m, h. See [influxdb docs](https://influxdb.com/docs/v0.9/write_protocols/write_syntax.html) for more details
 
 
@@ -142,6 +142,38 @@ Example check definition:
 If both the client and the check tags have the same key, the one defined on the check will overwrite/win the merge.
 
 The tags will be sorted alphabetically for InfluxDB performance, and tags with empty values will be skipped.
+
+### Event Output Tags
+
+This extension already provides check level and client level tags and now can provide event output tags. This will help us reducing number of sensu checks and provide better flexibility and control.
+
+Example -
+Let's say we configured the sensu check output to be :
+
+```
+app.downloads.eventtags.platform.iOS 26 1476047752
+app.downloads.eventtags.platform.android 52 1476047752
+app.downloads.eventtags.platform.others 12 1476047752
+```
+
+The extension will split the output of the measurement on eventtags. Then it will slice the second part into tag key and values. From above example, the transformed output will be -
+```
+measurement = app.downloads, tags = platform => iOS , value = 26, timestamp = 1476047752 
+measurement = app.downloads, tags = platform => android , value = 52, timestamp = 1476047752
+measurement = app.downloads, tags = platform => others , value = 12, timestamp = 1476047752
+```
+
+You can create multiple tags also, for example :
+
+```
+app.downloads.eventtags.platform.iOS.device.iPad 92 1476047752
+```
+will be transformed to :
+```
+measurement = app.downloads, tags = platform => iOS;device => iPad , value = 92, timestamp = 1476047752 
+```
+
+The event output tags will be merged with client and check definition tags and sent to InfluxDB as usual.
 
 # Performance
 

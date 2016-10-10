@@ -78,6 +78,17 @@ module Sensu::Extension
                 next
               end
 
+              # Get event output tags
+              if measurement.include?('eventtags')
+                only_measurement, tagstub = measurement.split('.eventtags.',2)
+                event_tags = Hash.new()
+                tagstub.split('.').each_slice(2) do |key, value|
+                  event_tags[key] = value
+                end
+                measurement = only_measurement
+                tags = create_tags(client_tags.merge(check_tags).merge(event_tags))
+              end
+
               point = "#{measurement}#{tags} value=#{field_value} #{timestamp}"
             end
 
