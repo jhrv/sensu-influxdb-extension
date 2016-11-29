@@ -1,21 +1,27 @@
 sensu-influxdb-extension
 ========================
 
-[Sensu](https://sensuapp.org/) extension for sending metrics with graphite data-format to [InfluxDB](https://influxdb.com/). For more arbitrary event-type data, check out [sensu-influxdb-proxy-extension](https://github.com/jhrv/sensu-influxdb-proxy-extension) instead.
+[Sensu](https://sensuapp.org/) extension for sending metrics to [InfluxDB](https://influxdb.com/) using [line protocol](https://docs.influxdata.com/influxdb/latest/write_protocols/line_protocol_reference)
 
-For each sensu-event it receives, it will transform each line of data into a InfluxDB datapoint, containing optional tags defined on the sensu client. It will buffer up points until it reaches the configured length or maximum age (see **buffer_size** and **buffer_max_age**), and then post the data directly to the InfluxDB REST-API using the [line protocol](https://influxdb.com/docs/v0.9/write_protocols/line.html).
+It handles both metrics on the graphite message format "key value timestamp\n" as well as line protocol directly by setting the extension in **proxy mode**. 
+
+# How it works
+
+For every sensu-event, it will grab the output and transform each line into a line protocol data point. The point will contain tags defined on the check and sensu client (optional).
+It will buffer up points until it reaches the configured length or maximum age (see **buffer_size** and **buffer_max_age**), and then post the data directly to the [InfluxDB write endpoint](https://docs.influxdata.com/influxdb/latest/tools/api/#write).
 
 Example line of graphite data-format ([metric_path] [value] [timestamp]\n):
-
-```
-key_a 6996 1435216969
-```
 
 will be transformed into the following data-point ([line protocol](https://influxdb.com/docs/v0.9/write_protocols/line.html))...
 
 ```
-key_a[,<sensu_client_tags>] value=6996 1435216969\n...
+key_a[,<tags>] value=6996 1435216969\n...
 ```
+
+# Proxy mode
+
+If the extension is configured to be in proxy mode, it will skip the transformation step and assume that the data is valid [line protocol](https://docs.influxdata.com/influxdb/latest/write_protocols/line_protocol_reference).
+It will not take into account any tags defined in the sensu-configuration.
 
 # Getting started
 
@@ -40,6 +46,7 @@ Example of a minimal configuration file
 | hostname          |       none (required) |
 | port              |                  8086 | 
 | database          |       none (required) |
+| proxy_mode        |                 false |
 | buffer_size       |           100 (lines) |
 | buffer_max_age    |          10 (seconds) |
 | ssl               |                 false |
@@ -78,17 +85,16 @@ Example of a minimal configuration file
 
 5) Restart your sensu-server and sensu-client(s)
 
-
-If you follow the sensu-server log (/var/log/sensu/sensu-server.log) you should see the following output if all is working correctly:
+You should see the following output in the sensu-server logs if all is working correctly:
 
 ```
 {"timestamp":"2015-06-21T13:37:04.256753+0200","level":"info","message":"influxdb-extension:
 Successfully initialized config: hostname: ....
 ```
 
-#tags (optional)
+# Tags (optional)
 
-If you want to tag your InfluxDB measurements (great for querying, as tags are indexed), you can define this on the sensu-client as well as on the checks definition.
+If you want to tag your InfluxDB measurements (great for querying, as tags are indexed), you can define this on the sensu-client as well as on the checks definition. 
 
 Example sensu-client definition:
 
@@ -106,7 +112,6 @@ Example sensu-client definition:
     }
 }
 ```
-
 
 Example check definition:
 
@@ -133,7 +138,9 @@ Example check definition:
 
 If both the client and the check tags have the same key, the one defined on the check will overwrite/win the merge.
 
-#performance
+The tags will be sorted alphabetically for InfluxDB performance, and tags with empty values will be skipped.
+
+# Performance
 
 The extension will buffer up points until it reaches the configured **buffer_size** length or **buffer_max_age**, and then post all the points in the buffer to InfluxDB. 
 Depending on your load, you will want to tune these configurations to match your environment.
