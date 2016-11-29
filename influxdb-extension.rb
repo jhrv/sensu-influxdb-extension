@@ -1,4 +1,5 @@
 #!/usr/bin/env ruby
+# coding: utf-8
 
 require "net/http"
 require "json"
@@ -17,11 +18,10 @@ module Sensu::Extension
     end
 
     def post_init
-      influxdb_config = settings[@@extension_name]
-      
+      influxdb_config = settings[@@extension_name] || Hash.new
       validate_config(influxdb_config)
        
-      hostname         = influxdb_config[:hostname] 
+      hostname         = influxdb_config[:hostname] || "127.0.0.1" 
       port             = influxdb_config[:port] || "8086"
       database         = influxdb_config[:database]
       ssl              = influxdb_config[:ssl] || false
@@ -34,8 +34,10 @@ module Sensu::Extension
       auth_queryparam  = if username.nil? or password.nil? then "" else "&u=#{username}&p=#{password}" end
       @BUFFER_SIZE     = if influxdb_config.key?(:buffer_size) then influxdb_config[:buffer_size].to_i else 100 end
       @BUFFER_MAX_AGE  = if influxdb_config.key?(:buffer_max_age) then influxdb_config[:buffer_max_age].to_i else 10 end
+      @PROXY_MODE      = influxdb_config[:proxy_mode] || false
 
-      @uri = URI("#{protocol}://#{hostname}:#{port}/write?db=#{database}&precision=#{precision}#{rp_queryparam}#{auth_queryparam}")
+      string = "#{protocol}://#{hostname}:#{port}/write?db=#{database}&precision=#{precision}#{rp_queryparam}#{auth_queryparam}"
+      @uri = URI(string)
       @http = Net::HTTP::new(@uri.host, @uri.port)         
       @buffer = []
       @buffer_flushed = Time.now.to_i
@@ -45,25 +47,32 @@ module Sensu::Extension
 
     def run(event)
       begin
+
         if buffer_too_old? or buffer_too_big?
           flush_buffer
         end
-        
+
         event = JSON.parse(event)
-        client_tags = event["client"]["tags"] || Hash.new
-        check_tags = event["check"]["tags"] || Hash.new
-        tags = create_tags(client_tags.merge(check_tags))
         output = event["check"]["output"]
 
-        output.split(/\r\n|\n/).each do |line|
-            measurement, field_value, timestamp = line.split(/\s+/)
+        if not @PROXY_MODE
+          client_tags = event["client"]["tags"] || Hash.new
+          check_tags = event["check"]["tags"] || Hash.new
+          tags = create_tags(client_tags.merge(check_tags))
+        end
+        
+        output.split(/\r\n|\n/).each do |point|
+            if not @PROXY_MODE
+              measurement, field_value, timestamp = point.split(/\s+/)
 
-            if not is_number?(timestamp)
-              @logger.debug("invalid timestamp, skipping line in event #{event}")
-              next
+              if not is_number?(timestamp)
+                @logger.debug("invalid timestamp, skipping line in event #{event}")
+                next
+              end
+
+              point = "#{measurement}#{tags} value=#{field_value} #{timestamp}" 
             end
-            
-            point = "#{measurement}#{tags} value=#{field_value} #{timestamp}" 
+
             @buffer.push(point)
             @logger.debug("#{@@extension_name}: stored point in buffer (#{@buffer.length}/#{@BUFFER_SIZE})")
         end
@@ -72,7 +81,6 @@ module Sensu::Extension
       end
       yield('', 0)
     end
-    
 
     def create_tags(tags)
         begin
@@ -99,8 +107,13 @@ module Sensu::Extension
         request.body = payload 
         
         @logger.debug("#{@@extension_name}: writing payload #{payload} to endpoint #{@uri.to_s}")
-        response = @http.request(request)
-        @logger.info("#{@@extension_name}: influxdb http response code = #{response.code}, body = #{response.body}")
+        begin
+          response = @http.request(request)
+          @logger.info("#{@@extension_name}: influxdb http response code = #{response.code}, body = #{response.body}")
+        rescue => e
+          @logger.error("unable to send payload to InfluxDB #{e}")
+          ""
+        end
     end
 
     def flush_buffer
@@ -126,7 +139,7 @@ module Sensu::Extension
 
       ["hostname", "database"].each do |required_setting| 
         if config[required_setting].nil? 
-          raise ArgumentError, "required setting #{required_setting} not provided to extension. this should be provided as json element with key "#{@@extension_name}". exiting..."
+          raise ArgumentError, "required setting #{required_setting} not provided to extension. this should be provided as json element with key #{@@extension_name}. exiting..."
         end
       end
     end
