@@ -1,4 +1,4 @@
-sensu-influxdb-extension
+sensu-influxdb-extension ![circle ci build status](https://circleci.com/gh/jhrv/sensu-influxdb-extension.png?circle-token=:circle-token)
 ========================
 
 [Sensu](https://sensuapp.org/) extension for sending metrics to [InfluxDB](https://influxdb.com/) using [line protocol](https://docs.influxdata.com/influxdb/latest/write_protocols/line_protocol_reference)
