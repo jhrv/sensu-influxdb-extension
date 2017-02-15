@@ -65,14 +65,17 @@ module Sensu::Extension
         output.split(/\r\n|\n/).each do |point|
             if not @PROXY_MODE
               measurement, field_value, timestamp = point.split(/\s+/)
-              measurmentField = measurement.split('.')
+              measurmentFieldWorking = measurement.split('.')
+              measurementFieldWorking2 = measurmentFieldWorking.drop(2)
+              measurementField = measurementFieldWorking2.join(".")
 
               if not is_number?(timestamp)
                 @logger.debug("invalid timestamp, skipping line in event #{event}")
                 next
               end
 
-              point = "#{measurmentField[2]}=#{field_value}"
+              point = "#{measurementField}=#{field_value}"
+              #point = "#{measurmentField[2]}=#{field_value}"
             end
 
             @consolidatedMeasurment.push(point)
