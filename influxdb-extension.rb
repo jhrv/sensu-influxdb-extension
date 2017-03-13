@@ -59,6 +59,7 @@ module Sensu::Extension
         if not @PROXY_MODE
           client_tags = event["client"]["tags"] || Hash.new
           check_tags = event["check"]["tags"] || Hash.new
+          client_tags["host"] = event["client"]["name"]
           tags = create_tags(client_tags.merge(check_tags))
         end
         
