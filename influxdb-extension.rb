@@ -41,6 +41,7 @@ module Sensu::Extension
       @http = Net::HTTP::new(@uri.host, @uri.port)         
       @buffer = []
       @buffer_flushed = Time.now.to_i
+      @consolidatedMeasurment = []
 
       @logger.info("#{@@extension_name}: successfully initialized config: hostname: #{hostname}, port: #{port}, database: #{database}, uri: #{@uri.to_s}, username: #{username}, buffer_size: #{@BUFFER_SIZE}, buffer_max_age: #{@BUFFER_MAX_AGE}")
     end
@@ -58,24 +59,37 @@ module Sensu::Extension
         if not @PROXY_MODE
           client_tags = event["client"]["tags"] || Hash.new
           check_tags = event["check"]["tags"] || Hash.new
+          client_tags["host"] = event["client"]["name"]
           tags = create_tags(client_tags.merge(check_tags))
         end
         
         output.split(/\r\n|\n/).each do |point|
             if not @PROXY_MODE
               measurement, field_value, timestamp = point.split(/\s+/)
+              measurmentFieldWorking = measurement.split('.')
+              measurementFieldWorking2 = measurmentFieldWorking.drop(2)
+              measurementField = measurementFieldWorking2.join(".")
 
               if not is_number?(timestamp)
                 @logger.debug("invalid timestamp, skipping line in event #{event}")
                 next
               end
 
-              point = "#{measurement}#{tags} value=#{field_value} #{timestamp}" 
+              point = "#{measurementField}=#{field_value}"
+              #point = "#{measurmentField[2]}=#{field_value}"
             end
 
-            @buffer.push(point)
+            @consolidatedMeasurment.push(point)
             @logger.debug("#{@@extension_name}: stored point in buffer (#{@buffer.length}/#{@BUFFER_SIZE})")
         end
+
+        table = event["client"]["name"] + "." + event["check"]["name"]
+        fields = @consolidatedMeasurment.join(",")
+        @consolidatedMeasurment=[]
+        eventTimestamp = event["check"]["executed"]
+        newPoint = "#{table}#{tags} #{fields} #{eventTimestamp}"
+        @buffer.push(newPoint)
+
       rescue => e
         @logger.debug("#{@@extension_name}: unable to post payload to influxdb for event #{event} - #{e.backtrace.to_s}")
       end
@@ -109,7 +123,7 @@ module Sensu::Extension
         @logger.debug("#{@@extension_name}: writing payload #{payload} to endpoint #{@uri.to_s}")
         begin
           response = @http.request(request)
-          @logger.info("#{@@extension_name}: influxdb http response code = #{response.code}, body = #{response.body}")
+          @logger.debug("#{@@extension_name}: influxdb http response code = #{response.code}, body = #{response.body}")
         rescue => e
           @logger.error("unable to send payload to InfluxDB #{e}")
           ""
