@@ -50,12 +50,14 @@ Example of a minimal configuration file
 | buffer_size       |           100 (lines) |
 | buffer_max_age    |          10 (seconds) |
 | ssl               |                 false |
-| precision         |                 s (*) |
+| ssl_cert (*)      |                  none |
+| precision         |                s (**) |
 | retention_policy  |                  none |
 | username          |                  none |
 | password          |                  none |
 
-(*) s = seconds. Other valid options are n, u, ms, m, h. See [influxdb docs](https://influxdb.com/docs/v0.9/write_protocols/write_syntax.html) for more details
+(*) The SSL certificate pem file used in InfluxDB too
+(**) s = seconds. Other valid options are n, u, ms, m, h. See [influxdb docs](https://influxdb.com/docs/v0.9/write_protocols/write_syntax.html) for more details
 
 
 3) Add the extension to your sensu-handler configuration 
