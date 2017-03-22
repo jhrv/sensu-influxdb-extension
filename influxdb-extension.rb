@@ -25,6 +25,7 @@ module Sensu::Extension
       port             = influxdb_config[:port] || "8086"
       database         = influxdb_config[:database]
       ssl              = influxdb_config[:ssl] || false
+      ssl_cert 	       = influxdb_config['ssl_cert']
       precision        = influxdb_config[:precision] || "s"
       retention_policy = influxdb_config[:retention_policy]
       rp_queryparam    = if retention_policy.nil? then "" else "&rp=#{retention_policy}" end
@@ -39,6 +40,12 @@ module Sensu::Extension
       string = "#{protocol}://#{hostname}:#{port}/write?db=#{database}&precision=#{precision}#{rp_queryparam}#{auth_queryparam}"
       @uri = URI(string)
       @http = Net::HTTP::new(@uri.host, @uri.port)         
+      if ssl
+        @http.ssl_version = :TLSv1
+        @http.use_ssl = true
+        @http.verify_mode = OpenSSL::SSL::VERIFY_PEER
+        @http.ca_file = ssl_cert
+      end
       @buffer = []
       @buffer_flushed = Time.now.to_i
 
@@ -109,7 +116,7 @@ module Sensu::Extension
         @logger.debug("#{@@extension_name}: writing payload #{payload} to endpoint #{@uri.to_s}")
         begin
           response = @http.request(request)
-          @logger.info("#{@@extension_name}: influxdb http response code = #{response.code}, body = #{response.body}")
+          @logger.debug("#{@@extension_name}: influxdb http response code = #{response.code}, body = #{response.body}")
         rescue => e
           @logger.error("unable to send payload to InfluxDB #{e}")
           ""
