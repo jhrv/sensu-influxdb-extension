@@ -6,7 +6,7 @@ require "json"
 
 module Sensu::Extension
   class InfluxDB < Handler
-    
+
     @@extension_name = "influxdb-extension"
 
     def name
@@ -20,12 +20,13 @@ module Sensu::Extension
     def post_init
       influxdb_config = settings[@@extension_name] || Hash.new
       validate_config(influxdb_config)
-       
-      hostname         = influxdb_config[:hostname] || "127.0.0.1" 
+
+      hostname         = influxdb_config[:hostname] || "127.0.0.1"
       port             = influxdb_config[:port] || "8086"
       database         = influxdb_config[:database]
       ssl              = influxdb_config[:ssl] || false
-      ssl_cert 	       = influxdb_config['ssl_cert']
+      ssl_ca_file      = influxdb_config[:ssl_ca_file]
+      ssl_verify       = if influxdb_config.key?(:ssl_verify) then influxdb_config[:ssl_verify] else true end
       precision        = influxdb_config[:precision] || "s"
       retention_policy = influxdb_config[:retention_policy]
       rp_queryparam    = if retention_policy.nil? then "" else "&rp=#{retention_policy}" end
@@ -39,12 +40,12 @@ module Sensu::Extension
 
       string = "#{protocol}://#{hostname}:#{port}/write?db=#{database}&precision=#{precision}#{rp_queryparam}#{auth_queryparam}"
       @uri = URI(string)
-      @http = Net::HTTP::new(@uri.host, @uri.port)         
+      @http = Net::HTTP::new(@uri.host, @uri.port)
       if ssl
         @http.ssl_version = :TLSv1
         @http.use_ssl = true
-        @http.verify_mode = OpenSSL::SSL::VERIFY_PEER
-        @http.ca_file = ssl_cert
+        @http.verify_mode = if ssl_verify then OpenSSL::SSL::VERIFY_PEER else OpenSSL::SSL::VERIFY_NONE end
+        @http.ca_file = ssl_ca_file
       end
       @buffer = []
       @buffer_flushed = Time.now.to_i
@@ -67,7 +68,7 @@ module Sensu::Extension
           check_tags = event["check"]["tags"] || Hash.new
           tags = create_tags(client_tags.merge(check_tags))
         end
-        
+
         output.split(/\r\n|\n/).each do |point|
             if not @PROXY_MODE
               measurement, field_value, timestamp = point.split(/\s+/)
@@ -77,7 +78,7 @@ module Sensu::Extension
                 next
               end
 
-              point = "#{measurement}#{tags} value=#{field_value} #{timestamp}" 
+              point = "#{measurement}#{tags} value=#{field_value} #{timestamp}"
             end
 
             @buffer.push(point)
@@ -94,7 +95,7 @@ module Sensu::Extension
             # sorting tags alphabetically in order to increase influxdb performance
             sorted_tags = Hash[tags.sort]
 
-            tag_string = "" 
+            tag_string = ""
 
             sorted_tags.each do |tag, value|
                 next if value.to_s.empty? # skips tags without values
@@ -111,8 +112,8 @@ module Sensu::Extension
 
     def send_to_influxdb(payload)
         request = Net::HTTP::Post.new(@uri.request_uri)
-        request.body = payload 
-        
+        request.body = payload
+
         @logger.debug("#{@@extension_name}: writing payload #{payload} to endpoint #{@uri.to_s}")
         begin
           response = @http.request(request)
@@ -133,19 +134,19 @@ module Sensu::Extension
     def buffer_too_old?
       buffer_age = Time.now.to_i - @buffer_flushed
       buffer_age >= @BUFFER_MAX_AGE
-    end 
-    
+    end
+
     def buffer_too_big?
       @buffer.length >= @BUFFER_SIZE
-    end 
+    end
 
     def validate_config(config)
       if config.nil?
         raise ArgumentError, "no configuration for #{@@extension_name} provided. exiting..."
       end
 
-      ["hostname", "database"].each do |required_setting| 
-        if config[required_setting].nil? 
+      ["hostname", "database"].each do |required_setting|
+        if config[required_setting].nil?
           raise ArgumentError, "required setting #{required_setting} not provided to extension. this should be provided as json element with key #{@@extension_name}. exiting..."
         end
       end
@@ -153,6 +154,6 @@ module Sensu::Extension
 
     def is_number?(input)
       true if Integer(input) rescue false
-    end 
+    end
   end
 end

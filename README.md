@@ -50,13 +50,14 @@ Example of a minimal configuration file
 | buffer_size       |           100 (lines) |
 | buffer_max_age    |          10 (seconds) |
 | ssl               |                 false |
-| ssl_cert (*)      |                  none |
+| ssl_ca_file (*)   |                  none |
+| ssl_verify        |                  true |
 | precision         |                s (**) |
 | retention_policy  |                  none |
 | username          |                  none |
 | password          |                  none |
 
-(*) The SSL certificate pem file used in InfluxDB too
+(*) Optional file with trusted CA certificates
 (**) s = seconds. Other valid options are n, u, ms, m, h. See [influxdb docs](https://influxdb.com/docs/v0.9/write_protocols/write_syntax.html) for more details
 
 
