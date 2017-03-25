@@ -91,7 +91,7 @@ module Sensu::Extension
         @buffer.push(newPoint)
 
       rescue => e
-        @logger.debug("#{@@extension_name}: unable to post payload to influxdb for event #{event} - #{e.backtrace.to_s}")
+        @logger.error("#{@@extension_name}: unable to post payload to influxdb for event #{event} - #{e.backtrace.to_s}")
       end
       yield('', 0)
     end
@@ -111,7 +111,7 @@ module Sensu::Extension
             @logger.debug("#{@@extension_name}: created tags: #{tag_string}")
             tag_string
         rescue => e
-            @logger.debug("#{@@extension_name}: unable to create tag string from #{tags} - #{e.backtrace.to_s}")
+            @logger.error("#{@@extension_name}: unable to create tag string from #{tags} - #{e.backtrace.to_s}")
             ""
         end
     end
