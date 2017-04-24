@@ -45,10 +45,19 @@ describe "Sensu::Extension::InfluxDB" do
   
   it "flushes buffer when full" do
     @extension.instance_variable_set("@BUFFER_SIZE", 5)
-
-    6.times { @extension.run(minimal_event.to_json) do end }
-    buffer = @extension.instance_variable_get("@buffer")
-    expect(buffer.size).to eq(1)
+    5.times {
+      @extension.run(minimal_event.to_json) do |output,status|
+        expect(output).to eq("ok")
+        expect(status).to eq(0)
+      end
+    }
+    # flush buffer will fail writing to bogus influxdb
+    2.times {
+      @extension.run(minimal_event.to_json) do |output,status|
+        expect(output).to eq("error")
+        expect(status).to eq(2)
+      end
+    }
   end
 
   it "flushes buffer when timed out" do
