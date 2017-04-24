@@ -95,10 +95,11 @@ module Sensu::Extension
             @buffer.push(point)
             @logger.debug("#{@@extension_name}: stored point in buffer (#{@buffer.length}/#{@BUFFER_SIZE})")
         end
+        yield 'ok', 0
       rescue => e
-        @logger.debug("#{@@extension_name}: unable to post payload to influxdb for event #{event} - #{e.backtrace.to_s}")
+        @logger.error("#{@@extension_name}: unable to handle event #{event} - #{e}")
+        yield 'error', 2
       end
-      yield('', 0)
     end
 
     def create_tags(tags)
@@ -122,17 +123,12 @@ module Sensu::Extension
     end
 
     def send_to_influxdb(payload)
-        request = Net::HTTP::Post.new(@uri.request_uri)
-        request.body = payload
+      request = Net::HTTP::Post.new(@uri.request_uri)
+      request.body = payload
 
-        @logger.debug("#{@@extension_name}: writing payload #{payload} to endpoint #{@uri.to_s}")
-        begin
-          response = @http.request(request)
-          @logger.debug("#{@@extension_name}: influxdb http response code = #{response.code}, body = #{response.body}")
-        rescue => e
-          @logger.error("unable to send payload to InfluxDB #{e}")
-          ""
-        end
+      @logger.debug("#{@@extension_name}: writing payload #{payload} to endpoint #{@uri.to_s}")
+      response = @http.request(request)
+      @logger.debug("#{@@extension_name}: influxdb http response code = #{response.code}, body = #{response.body}")
     end
 
     def flush_buffer
