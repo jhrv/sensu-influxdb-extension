@@ -1,6 +1,7 @@
 #!/usr/bin/env ruby
 # coding: utf-8
 
+require "sensu/extension"
 require "net/http"
 require "json"
 

@@ -1,5 +1,4 @@
-require "sensu/extension"
-require_relative '../influxdb-extension.rb'
+require "sensu/extensions/influxdb-extension"
 
 describe "Sensu::Extension::InfluxDB" do
 
