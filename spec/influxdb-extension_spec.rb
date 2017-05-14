@@ -1,4 +1,4 @@
-require "sensu/extensions/influxdb-extension"
+require "sensu/extensions/influxdb"
 
 describe "Sensu::Extension::InfluxDB" do
 
