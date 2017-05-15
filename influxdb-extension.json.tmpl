@@ -10,7 +10,12 @@
         "password": "<influxdb password>",
         "buffer_size": 100,
         "buffer_max_age": 10,
-        "precision": "s"
+        "precision": "s",
+        "additional_handlers": ["influxdb-proxy-nano"]
+    },
+    "influxdb-proxy-nano": {
+      "proxy_mode": true,
+      "precision": "n"
     }
 }
 

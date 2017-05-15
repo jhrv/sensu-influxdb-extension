@@ -1,25 +1,29 @@
 require "sensu/extensions/influxdb"
+require "sensu/logger"
 
 describe "Sensu::Extension::InfluxDB" do
 
   before do
     @extension = Sensu::Extension::InfluxDB.new
-    @extension.settings = {
-      "influxdb-extension" => {
-        "database" => "test",
-        "hostname" => "127.0.0.69"
-      }
+    @extension.settings = Hash.new
+    @extension.settings["influxdb-extension"] = {
+        :database => "test",
+        :hostname => "nonexistinghost",
+        :additional_handlers => ["proxy"],
+        :buffer_size => 5,
+        :buffer_max_age => 1
+    }
+    @extension.settings["proxy"] = {
+        :proxy_mode => true
     }
     
-    stubbed_logger = double("logger", :info => "info", :debug => "debug", :error => "error")
-
-    @extension.instance_variable_set("@logger", stubbed_logger)
+    @extension.instance_variable_set("@logger", Sensu::Logger.get(:log_level => :fatal))
     @extension.post_init
   end
 
   it "processes minimal event" do
     @extension.run(minimal_event.to_json) do 
-      buffer = @extension.instance_variable_get("@buffer")
+      buffer = @extension.instance_variable_get("@handlers")["influxdb-extension"]["buffer"]
       expect(buffer[0]).to eq("rspec value=69 1480697845")
     end
   end
@@ -36,14 +40,13 @@ describe "Sensu::Extension::InfluxDB" do
     }
 
     @extension.run(event.to_json) do 
-      buffer = @extension.instance_variable_get("@buffer")
+      buffer = @extension.instance_variable_get("@handlers")["influxdb-extension"]["buffer"]
       expect(buffer.size).to eq(0)
     end
   end
 
   
   it "flushes buffer when full" do
-    @extension.instance_variable_set("@BUFFER_SIZE", 5)
     5.times {
       @extension.run(minimal_event.to_json) do |output,status|
         expect(output).to eq("ok")
@@ -60,12 +63,11 @@ describe "Sensu::Extension::InfluxDB" do
   end
 
   it "flushes buffer when timed out" do
-    @extension.instance_variable_set("@BUFFER_MAX_AGE", 1)
     @extension.run(minimal_event.to_json) do end
     sleep(1)
     @extension.run(minimal_event.to_json) do end
 
-    buffer = @extension.instance_variable_get("@buffer")
+    buffer = @extension.instance_variable_get("@handlers")["influxdb-extension"]["buffer"]
     expect(buffer.size).to eq(1)
   end
 
@@ -91,15 +93,14 @@ describe "Sensu::Extension::InfluxDB" do
     
     @extension.run(event.to_json) do end
 
-    buffer = @extension.instance_variable_get("@buffer")
+    buffer = @extension.instance_variable_get("@handlers")["influxdb-extension"]["buffer"]
     expect(buffer[0]).to eq("rspec,a=1,b=1,c=1,x=1,y=1,z=1 value=69 1480697845")
   end
 
   it "does not modify input in proxy mode" do
-    @extension.instance_variable_set("@PROXY_MODE", true)
-    @extension.run(minimal_event.to_json) do end
+    @extension.run(minimal_event_proxy.to_json) do end
 
-    buffer = @extension.instance_variable_get("@buffer")
+    buffer = @extension.instance_variable_get("@handlers")["proxy"]["buffer"]
     expect(buffer[0]).to eq("rspec 69 1480697845")
   end
 
@@ -111,6 +112,18 @@ def minimal_event
         "name" => "rspec"
       },
       "check" => {
+        "output" => "rspec 69 1480697845"
+      }
+    }
+end
+
+def minimal_event_proxy
+    event = {
+      "client" => {
+        "name" => "rspec"
+      },
+      "check" => {
+        "handlers" => ["proxy"],
         "output" => "rspec 69 1480697845"
       }
     }

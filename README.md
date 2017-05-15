@@ -175,6 +175,35 @@ measurement = app.downloads, tags = platform => iOS;device => iPad , value = 92,
 
 The event output tags will be merged with client and check definition tags and sent to InfluxDB as usual.
 
+# Multiple handlers
+
+If you need to have multiple handlers, eg. for different precision, proxy mode, writing to different influx databases etc, this can be done by configuring **additional_handlers**:
+
+```
+{
+  "influxdb-extension": {
+    "hostname": "influxdb",
+    "port": 8086,
+    "database": "metrics",
+    "username": "sensu",
+    "password": "sensu",
+    "buffer_size": 1000,
+    "buffer_max_age": 10,
+    "additional_handlers": ["events", "events_nano"]
+  },
+  "events": {
+    "proxy_mode": true,
+    "precision": "s"
+  },
+  "events_nano": {
+    "proxy_mode": true,
+    "precision": "n"
+  }
+}
+```
+
+Settings for the additional handlers will be merged with the **influxdb-extension** settings, so you only need to specify the settings you want to change for that handler.
+
 # Performance
 
 The extension will buffer up points until it reaches the configured **buffer_size** length or **buffer_max_age**, and then post all the points in the buffer to InfluxDB. 

@@ -2,7 +2,8 @@
 
 Gem::Specification.new do |spec|
   spec.name          = "sensu-extensions-influxdb"
-  spec.version       = "2.0.1"
+  spec.version       = "2.1.0"
+  spec.license       = "MIT"
   spec.authors       = ["Johnny Horvi", "Terje Sannum"]
   spec.email         = ["johnny@horvi.no", "terje@offpiste.org"]
 

@@ -18,60 +18,104 @@ module Sensu::Extension
       "Transforms and sends metrics to InfluxDB"
     end
 
-    def post_init
-      influxdb_config = settings[@@extension_name] || Hash.new
-      validate_config(influxdb_config)
+    @@default_config = {
+      :hostname       => "127.0.0.1",
+      :port           => "8086",
+      :ssl            => false,
+      :precision      => "s",
+      :protocol       => "http",
+      :buffer_size    => 100,
+      :buffer_max_age => 10,
+      :proxy_mode     => false
+    }
 
-      hostname         = influxdb_config[:hostname] || "127.0.0.1"
-      port             = influxdb_config[:port] || "8086"
-      database         = influxdb_config[:database]
-      ssl              = influxdb_config[:ssl] || false
-      ssl_ca_file      = influxdb_config[:ssl_ca_file]
-      ssl_verify       = if influxdb_config.key?(:ssl_verify) then influxdb_config[:ssl_verify] else true end
-      precision        = influxdb_config[:precision] || "s"
-      retention_policy = influxdb_config[:retention_policy]
+    def create_config(name, defaults)
+      if settings[name].nil?
+        Raise ArgumentError "no configuration for #{name} provided. exiting..."
+      end
+      config = defaults.merge(settings[name])
+      @logger.debug("Config for #{name} created: #{config}")
+      validate_config(name, config)
+
+      hostname         = config[:hostname]
+      port             = config[:port]
+      database         = config[:database]
+      ssl              = config[:ssl]
+      ssl_ca_file      = config[:ssl_ca_file]
+      ssl_verify       = if config.key?(:ssl_verify) then config[:ssl_verify] else true end
+      precision        = config[:precision]
+      retention_policy = config[:retention_policy]
       rp_queryparam    = if retention_policy.nil? then "" else "&rp=#{retention_policy}" end
       protocol         = if ssl then "https" else "http" end
-      username         = influxdb_config[:username]
-      password         = influxdb_config[:password]
+      username         = config[:username]
+      password         = config[:password]
       auth_queryparam  = if username.nil? or password.nil? then "" else "&u=#{username}&p=#{password}" end
-      @BUFFER_SIZE     = if influxdb_config.key?(:buffer_size) then influxdb_config[:buffer_size].to_i else 100 end
-      @BUFFER_MAX_AGE  = if influxdb_config.key?(:buffer_max_age) then influxdb_config[:buffer_max_age].to_i else 10 end
-      @PROXY_MODE      = influxdb_config[:proxy_mode] || false
+      buffer_size      = config[:buffer_size]
+      buffer_max_age   = config[:buffer_max_age]
+      proxy_mode       = config[:proxy_mode]
 
       string = "#{protocol}://#{hostname}:#{port}/write?db=#{database}&precision=#{precision}#{rp_queryparam}#{auth_queryparam}"
-      @uri = URI(string)
-      @http = Net::HTTP::new(@uri.host, @uri.port)
+      uri = URI(string)
+      http = Net::HTTP::new(uri.host, uri.port)
       if ssl
-        @http.ssl_version = :TLSv1
-        @http.use_ssl = true
-        @http.verify_mode = if ssl_verify then OpenSSL::SSL::VERIFY_PEER else OpenSSL::SSL::VERIFY_NONE end
-        @http.ca_file = ssl_ca_file
+        http.ssl_version = :TLSv1
+        http.use_ssl = true
+        http.verify_mode = if ssl_verify then OpenSSL::SSL::VERIFY_PEER else OpenSSL::SSL::VERIFY_NONE end
+        http.ca_file = ssl_ca_file
       end
-      @buffer = []
-      @buffer_flushed = Time.now.to_i
 
-      @logger.info("#{@@extension_name}: successfully initialized config: hostname: #{hostname}, port: #{port}, database: #{database}, uri: #{@uri.to_s}, username: #{username}, buffer_size: #{@BUFFER_SIZE}, buffer_max_age: #{@BUFFER_MAX_AGE}")
+      @handlers ||= Hash.new
+      @handlers[name] = {
+        "http" => http,
+        "uri" => uri,
+        "buffer" => [],
+        "buffer_flushed" => Time.now.to_i,
+        "buffer_size" => buffer_size,
+        "buffer_max_age" => buffer_max_age,
+        "proxy_mode" => proxy_mode
+      }
+
+      @logger.info("#{name}: successfully initialized handler: hostname: #{hostname}, port: #{port}, database: #{database}, uri: #{uri.to_s}, username: #{username}, buffer_size: #{buffer_size}, buffer_max_age: #{buffer_max_age}")
+      return config
+    end
+
+    def post_init
+      main_config = create_config(@@extension_name, @@default_config)
+      if settings[name].key?(:additional_handlers)
+        settings[name][:additional_handlers].each {|h| create_config(h, main_config)}
+      end
     end
 
     def run(event)
       begin
+        @logger.debug("event: #{event}")
+        event = JSON.parse(event)
 
-        if buffer_too_old? or buffer_too_big?
-          flush_buffer
+        handler = @handlers[@@extension_name]
+        unless event["check"]["handlers"].nil?
+          event["check"]["handlers"].each {|x|
+            if @handlers.has_key?(x)
+              @logger.debug("found additional handler: #{x}")
+              handler = @handlers[x]
+              break
+            end
+          }
         end
 
-        event = JSON.parse(event)
+        if buffer_too_old?(handler) or buffer_too_big?(handler)
+          flush_buffer(handler)
+        end
+
         output = event["check"]["output"]
 
-        if not @PROXY_MODE
+        if not handler["proxy_mode"]
           client_tags = event["client"]["tags"] || Hash.new
           check_tags = event["check"]["tags"] || Hash.new
           tags = create_tags(client_tags.merge(check_tags))
         end
 
         output.split(/\r\n|\n/).each do |point|
-            if not @PROXY_MODE
+            if not handler["proxy_mode"]
               measurement, field_value, timestamp = point.split(/\s+/)
 
               if not is_number?(timestamp)
@@ -93,8 +137,8 @@ module Sensu::Extension
               point = "#{measurement}#{tags} value=#{field_value} #{timestamp}"
             end
 
-            @buffer.push(point)
-            @logger.debug("#{@@extension_name}: stored point in buffer (#{@buffer.length}/#{@BUFFER_SIZE})")
+            handler["buffer"].push(point)
+            @logger.debug("#{@@extension_name}: stored point in buffer (#{handler['buffer'].length}/#{handler['buffer_size']})")
         end
         yield 'ok', 0
       rescue => e
@@ -123,39 +167,39 @@ module Sensu::Extension
         end
     end
 
-    def send_to_influxdb(payload)
-      request = Net::HTTP::Post.new(@uri.request_uri)
+    def send_to_influxdb(handler)
+      payload = handler["buffer"].join("\n")
+      request = Net::HTTP::Post.new(handler['uri'].request_uri)
       request.body = payload
 
-      @logger.debug("#{@@extension_name}: writing payload #{payload} to endpoint #{@uri.to_s}")
-      response = @http.request(request)
+      @logger.debug("#{@@extension_name}: writing payload #{payload} to endpoint #{handler['uri'].to_s}")
+      response = handler["http"].request(request)
       @logger.debug("#{@@extension_name}: influxdb http response code = #{response.code}, body = #{response.body}")
     end
 
-    def flush_buffer
-      payload = @buffer.join("\n")
-      send_to_influxdb(payload)
-      @buffer = []
-      @buffer_flushed = Time.now.to_i
+    def flush_buffer(handler)
+      send_to_influxdb(handler)
+      handler["buffer"] = []
+      handler["buffer_flushed"] = Time.now.to_i
     end
 
-    def buffer_too_old?
-      buffer_age = Time.now.to_i - @buffer_flushed
-      buffer_age >= @BUFFER_MAX_AGE
+    def buffer_too_old?(handler)
+      buffer_age = Time.now.to_i - handler["buffer_flushed"]
+      buffer_age >= handler["buffer_max_age"]
     end
 
-    def buffer_too_big?
-      @buffer.length >= @BUFFER_SIZE
+    def buffer_too_big?(handler)
+      handler["buffer"].length >= handler["buffer_size"]
     end
 
-    def validate_config(config)
+    def validate_config(name, config)
       if config.nil?
-        raise ArgumentError, "no configuration for #{@@extension_name} provided. exiting..."
+        raise ArgumentError, "no configuration for #{name} provided. exiting..."
       end
 
       ["hostname", "database"].each do |required_setting|
-        if config[required_setting].nil?
-          raise ArgumentError, "required setting #{required_setting} not provided to extension. this should be provided as json element with key #{@@extension_name}. exiting..."
+        if config.has_key?(required_setting)
+          raise ArgumentError, "required setting #{required_setting} not provided to extension. this should be provided as json element with key #{name}. exiting..."
         end
       end
     end
