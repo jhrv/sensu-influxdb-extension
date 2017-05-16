@@ -25,7 +25,11 @@ It will not take into account any tags defined in the sensu-configuration.
 
 # Getting started
 
-1) Add the *sensu-influxdb-extension.rb* to the sensu extensions folder (/etc/sensu/extensions)
+1) Install the extension
+
+```
+sensu-install -e influxdb
+```
 
 2) Create your InfluxDB configuration for Sensu (or copy and edit *influxdb-extension.json.tmpl*) inside the sensu config folder (/etc/sensu/conf.d). 
 
@@ -41,25 +45,26 @@ Example of a minimal configuration file
 
 ## Full list of configuration options
 
-| variable          | default value         |
-| ----------------- | --------------------- |
-| hostname          |       none (required) |
-| port              |                  8086 | 
-| database          |       none (required) |
-| proxy_mode        |                 false |
-| buffer_size       |           100 (lines) |
-| buffer_max_age    |          10 (seconds) |
-| ssl               |                 false |
-| ssl_ca_file (*)   |                  none |
-| ssl_verify        |                  true |
-| precision         |                s (**) |
-| retention_policy  |                  none |
-| username          |                  none |
-| password          |                  none |
+| variable                  | default value         |
+| ------------------------- | --------------------- |
+| hostname                  |       none (required) |
+| port                      |                  8086 |
+| database                  |       none (required) |
+| proxy_mode                |                 false |
+| buffer_size               |           100 (lines) |
+| buffer_max_age            |          10 (seconds) |
+| ssl                       |                 false |
+| ssl_ca_file (*)           |                  none |
+| ssl_verify                |                  true |
+| precision                 |                s (**) |
+| retention_policy          |                  none |
+| username                  |                  none |
+| password                  |                  none |
+| additional_handlers (***) |                  none |
 
 (*) Optional file with trusted CA certificates  
-(**) s = seconds. Other valid options are n, u, ms, m, h. See [influxdb docs](https://influxdb.com/docs/v0.9/write_protocols/write_syntax.html) for more details
-
+(**) s = seconds. Other valid options are n, u, ms, m, h. See [influxdb docs](https://influxdb.com/docs/v0.9/write_protocols/write_syntax.html) for more details  
+(***) Optional list of additional handler configurations (see below)
 
 3) Add the extension to your sensu-handler configuration 
 
@@ -92,7 +97,7 @@ You should see the following output in the sensu-server logs if all is working c
 
 ```
 {"timestamp":"2015-06-21T13:37:04.256753+0200","level":"info","message":"influxdb-extension:
-Successfully initialized config: hostname: ....
+successfully initialized handler: hostname: ....
 ```
 
 # Tags (optional)
@@ -203,6 +208,24 @@ If you need to have multiple handlers, eg. for different precision, proxy mode, 
 ```
 
 Settings for the additional handlers will be merged with the **influxdb-extension** settings, so you only need to specify the settings you want to change for that handler.
+
+Register the additional handlers:
+
+```
+"handlers": {
+   ...
+    "events": {
+      "type": "set",
+      "handlers": ["influxdb-extension"]
+    },
+    "events_nano": {
+      "type": "set",
+      "handlers": ["influxdb-extension"]
+    }
+    ...
+ }
+
+```
 
 # Performance
 
