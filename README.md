@@ -1,11 +1,13 @@
-sensu-influxdb-extension ![circle ci build status](https://circleci.com/gh/jhrv/sensu-influxdb-extension.png?circle-token=:circle-token)
-========================
+# sensu-influxdb-extension
 
-[Sensu](https://sensuapp.org/) extension for sending metrics to [InfluxDB](https://influxdb.com/) using [line protocol](https://docs.influxdata.com/influxdb/latest/write_protocols/line_protocol_reference)
+![Gem Version](https://badge.fury.io/rb/sensu-extensions-influxdb.svg)
+![circle ci build status](https://circleci.com/gh/jhrv/sensu-influxdb-extension.png?circle-token=:circle-token)
+
+[Sensu](https://sensuapp.org/) extension for sending metrics to [InfluxDB](https://influxdb.com/) using [line protocol](https://docs.influxdata.com/influxdb/latest/write_protocols/line_protocol_reference).
 
 It handles both metrics on the graphite message format "key value timestamp\n" as well as line protocol directly by setting the extension in **proxy mode**. 
 
-# How it works
+## How it works
 
 For every sensu-event, it will grab the output and transform each line into a line protocol data point. The point will contain tags defined on the check and sensu client (optional).
 It will buffer up points until it reaches the configured length or maximum age (see **buffer_size** and **buffer_max_age**), and then post the data directly to the [InfluxDB write endpoint](https://docs.influxdata.com/influxdb/latest/tools/api/#write).
@@ -18,12 +20,12 @@ will be transformed into the following data-point ([line protocol](https://influ
 key_a[,<tags>] value=6996 1435216969\n...
 ```
 
-# Proxy mode
+## Proxy mode
 
 If the extension is configured to be in proxy mode, it will skip the transformation step and assume that the data is valid [line protocol](https://docs.influxdata.com/influxdb/latest/write_protocols/line_protocol_reference).
 It will not take into account any tags defined in the sensu-configuration.
 
-# Getting started
+## Getting started
 
 1) Install the extension
 
@@ -43,28 +45,28 @@ Example of a minimal configuration file
 }
 ```
 
-## Full list of configuration options
+### Full list of configuration options
 
-| variable                  | default value         |
-| ------------------------- | --------------------- |
-| hostname                  |       none (required) |
-| port                      |                  8086 |
-| database                  |       none (required) |
-| proxy_mode                |                 false |
-| buffer_size               |           100 (lines) |
-| buffer_max_age            |          10 (seconds) |
-| ssl                       |                 false |
-| ssl_ca_file (*)           |                  none |
-| ssl_verify                |                  true |
-| precision                 |                s (**) |
-| retention_policy          |                  none |
-| username                  |                  none |
-| password                  |                  none |
-| additional_handlers (***) |                  none |
+| variable                     | default value         |
+| ---------------------------- | --------------------- |
+| hostname                     |       none (required) |
+| port                         |                  8086 |
+| database                     |       none (required) |
+| proxy_mode                   |                 false |
+| buffer_size                  |           100 (lines) |
+| buffer_max_age               |          10 (seconds) |
+| ssl                          |                 false |
+| ssl_ca_file (\*)             |                  none |
+| ssl_verify                   |                  true |
+| precision                    |              s (\*\*) |
+| retention_policy             |                  none |
+| username                     |                  none |
+| password                     |                  none |
+| additional_handlers (\*\*\*) |                  none |
 
-(*) Optional file with trusted CA certificates  
-(**) s = seconds. Other valid options are n, u, ms, m, h. See [influxdb docs](https://influxdb.com/docs/v0.9/write_protocols/write_syntax.html) for more details  
-(***) Optional list of additional handler configurations (see below)
+(\*) Optional file with trusted CA certificates  
+(\*\*) s = seconds. Other valid options are n, u, ms, m, h. See [influxdb docs](https://influxdb.com/docs/v0.9/write_protocols/write_syntax.html) for more details  
+(\*\*\*) Optional list of additional handler configurations (see below)
 
 3) Add the extension to your sensu-handler configuration 
 
@@ -100,7 +102,7 @@ You should see the following output in the sensu-server logs if all is working c
 successfully initialized handler: hostname: ....
 ```
 
-# Tags (optional)
+## Tags (optional)
 
 If you want to tag your InfluxDB measurements (great for querying, as tags are indexed), you can define this on the sensu-client as well as on the checks definition. 
 
@@ -148,7 +150,7 @@ If both the client and the check tags have the same key, the one defined on the 
 
 The tags will be sorted alphabetically for InfluxDB performance, and tags with empty values will be skipped.
 
-### Event Output Tags
+#### Event Output Tags
 
 This extension already provides check level and client level tags and now can provide event output tags. This will help us reducing number of sensu checks and provide better flexibility and control.
 
@@ -180,7 +182,7 @@ measurement = app.downloads, tags = platform => iOS;device => iPad , value = 92,
 
 The event output tags will be merged with client and check definition tags and sent to InfluxDB as usual.
 
-# Multiple handlers
+## Multiple handlers
 
 If you need to have multiple handlers, eg. for different precision, proxy mode, writing to different influx databases etc, this can be done by configuring **additional_handlers**:
 
@@ -227,7 +229,7 @@ Register the additional handlers:
 
 ```
 
-# Performance
+## Performance
 
 The extension will buffer up points until it reaches the configured **buffer_size** length or **buffer_max_age**, and then post all the points in the buffer to InfluxDB. 
 Depending on your load, you will want to tune these configurations to match your environment.
